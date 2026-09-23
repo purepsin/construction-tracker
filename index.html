@@ -585,7 +585,7 @@
         submitBtn.innerText = "กำลังย่อขนาดรูปภาพ...";
         const compressedFile = await compressImage(selectedFile, 1200, 1200, 0.7);
 
-        submitBtn.innerText = "กำลังอัปโหลดรูปภาพไปยัง ImgBB...";
+        submitBtn.innerText = "กำลังอัปโหลดรูปภาพ...";
         imageUrl = await uploadToImgBB(compressedFile);
       }
 
