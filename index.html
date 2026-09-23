@@ -184,237 +184,230 @@
   </div>
 
   <!-- ================= SCRIPT ================= -->
-  <script>
-    let projects = [];
+ <script>
+  // นำ URL ที่ได้จากการ Deploy Google Apps Script มาวางตรงนี้
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyXS2ezGSm5gSwysDYr3SEBsxMlMAokQtHIHj5wVSL__yQuTweYNHZhiWXmj0cDRhNc/exec";
+
+  let projects = [];
+  let map, markersGroup, base64Image = "";
+  let isSidebarOpen = true;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      initMap();
+      fetchProjects();
+    }, 300);
+  });
+
+  function initMap() {
+    map = L.map('map').setView([14.9733, 102.0831], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    markersGroup = L.layerGroup().addTo(map);
+  }
+
+  // ดึงข้อมูลจาก Google Sheets
+  async function fetchProjects() {
     try {
-      projects = JSON.parse(localStorage.getItem('my_projects')) || [];
-    } catch(e) {
-      projects = [];
-    }
-
-    if (projects.length === 0) {
-      projects = [
-        {
-          id: "P001",
-          name: "บ้านคุณสมชาย (สไตล์นอร์ดิก)",
-          status: "สร้างเสร็จแล้ว",
-          address: "อ.เมือง จ.นครราชสีมา",
-          lat: 14.9733,
-          lng: 102.0831,
-          image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=500&q=80",
-          details: "บ้านเดี่ยว 2 ชั้น 3 ห้องนอน 2 ห้องน้ำ พท.ใช้สอย 180 ตร.ม."
-        }
-      ];
-    }
-
-    let map, markersGroup, base64Image = "";
-    let isSidebarOpen = true;
-
-    document.addEventListener("DOMContentLoaded", () => {
-      setTimeout(initMap, 300);
-    });
-
-    function initMap() {
-      map = L.map('map').setView([14.9733, 102.0831], 9);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-      }).addTo(map);
-
-      markersGroup = L.layerGroup().addTo(map);
-      renderUI(projects);
-      map.invalidateSize();
-    }
-
-    function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      if (isSidebarOpen) {
-        sidebar.classList.add('hidden');
-      } else {
-        sidebar.classList.remove('hidden');
-      }
-      isSidebarOpen = !isSidebarOpen;
-      
-      setTimeout(() => {
-        if(map) map.invalidateSize();
-      }, 300);
-    }
-
-    function renderUI(data) {
-      const listContainer = document.getElementById('projectList');
-      listContainer.innerHTML = '';
-      if (markersGroup) markersGroup.clearLayers();
-
-      document.getElementById('projectCount').innerText = data.length;
-
-      data.forEach(p => {
-        const isDone = p.status === 'สร้างเสร็จแล้ว';
-        const badgeColor = isDone ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
-        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
-
-        if (map && markersGroup) {
-          const marker = L.marker([p.lat, p.lng]).bindPopup(`
-            <div class="font-sans text-xs p-1" style="min-width: 180px;">
-              <img src="${p.image}" class="w-full h-24 object-cover rounded mb-2">
-              <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
-              <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
-              <div class="mt-2 flex justify-between items-center gap-2">
-                <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${p.status}</span>
-                <a href="${gmapsUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white !text-white px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 no-underline shadow">
-                  <i class="fa-solid fa-diamond-turn-right text-white"></i> นำทาง
-                </a>
-              </div>
-            </div>
-          `);
-          markersGroup.addLayer(marker);
-          p.markerRef = marker;
-        }
-
-        const card = document.createElement('div');
-        card.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition cursor-pointer flex flex-col gap-2 group";
-        card.innerHTML = `
-          <div class="flex gap-3">
-            <img src="${p.image}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover bg-slate-100 shrink-0">
-            <div class="flex-1 flex flex-col justify-between overflow-hidden">
-              <div>
-                <span class="text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeColor}">${p.status}</span>
-                <h4 class="font-bold text-slate-800 text-sm truncate mt-1 group-hover:text-blue-600 transition-colors">${p.name}</h4>
-                <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot text-slate-400"></i> ${p.address}</p>
-              </div>
-              <p class="text-[11px] text-slate-600 line-clamp-1 mt-1">${p.details}</p>
-            </div>
-          </div>
-          <div class="pt-2 border-t border-slate-100 flex items-center gap-2">
-            <a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" 
-               class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow">
-              <i class="fa-solid fa-diamond-turn-right text-white"></i>
-              <span>นำทาง</span>
-            </a>
-            <button onclick="deleteProject('${p.id}', event)" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition">
-              <i class="fa-solid fa-trash-can"></i>
-              <span>ลบ</span>
-            </button>
-          </div>
-        `;
-
-        card.querySelector('.flex').onclick = () => {
-          if (map && p.markerRef) {
-            map.flyTo([p.lat, p.lng], 15);
-            p.markerRef.openPopup();
-          }
-        };
-        listContainer.appendChild(card);
-      });
-    }
-
-    function previewImage(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          base64Image = e.target.result;
-          document.getElementById('imagePreview').src = base64Image;
-          document.getElementById('previewContainer').classList.remove('hidden');
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function deleteProject(id, event) {
-      event.stopPropagation();
-      if (confirm('คุณต้องการลบรายการนี้ใช่หรือไม่?')) {
-        projects = projects.filter(p => p.id !== id);
-        try {
-          localStorage.setItem('my_projects', JSON.stringify(projects));
-        } catch(e) {
-          alert('ไม่สามารถลบข้อมูลจาก LocalStorage ได้');
-        }
+      const res = await fetch(WEB_APP_URL);
+      const json = await res.json();
+      if (json.status === 'success') {
+        projects = json.data;
         renderUI(projects);
       }
+    } catch (err) {
+      console.error(" Error loading data from Google Sheets:", err);
     }
+  }
 
-    function filterData() {
-      const query = document.getElementById('searchInput').value.toLowerCase();
-      renderUI(projects.filter(p => p.name.toLowerCase().includes(query) || p.address.toLowerCase().includes(query) || p.status.toLowerCase().includes(query)));
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (isSidebarOpen) {
+      sidebar.classList.add('hidden');
+    } else {
+      sidebar.classList.remove('hidden');
     }
+    isSidebarOpen = !isSidebarOpen;
+    
+    setTimeout(() => {
+      if(map) map.invalidateSize();
+    }, 300);
+  }
 
-    function filterStatus(status) {
-      renderUI(status === 'ALL' ? projects : projects.filter(p => p.status === status));
-    }
+  function renderUI(data) {
+    const listContainer = document.getElementById('projectList');
+    listContainer.innerHTML = '';
+    if (markersGroup) markersGroup.clearLayers();
 
-    function toggleAdminModal() {
-      document.getElementById('adminModal').classList.toggle('hidden');
-    }
+    document.getElementById('projectCount').innerText = data.length;
 
-    function getCurrentGPS() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            document.getElementById('projectLat').value = pos.coords.latitude.toFixed(6);
-            document.getElementById('projectLng').value = pos.coords.longitude.toFixed(6);
-          },
-          err => {
-            alert("ไม่สามารถดึงพิกัด GPS ได้ กรุณาเปิด Location Service");
-          }
-        );
-      } else {
-        alert("เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด GPS");
-      }
-    }
+    data.forEach(p => {
+      const isDone = p.status === 'สร้างเสร็จแล้ว';
+      const badgeColor = isDone ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
+      const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
 
-    function locateUser() {
-      if (map) {
-        map.locate({setView: true, maxZoom: 15});
-        map.once('locationfound', (e) => {
-          L.circle(e.latlng, e.accuracy, { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
-          L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
-        });
-      }
-    }
-
-    // แก้ไขระบบกดบันทึกข้อมูล (ป้องกันแครชจากการแปลงค่าพิกัด)
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      
-      const latVal = parseFloat(document.getElementById('projectLat').value);
-      const lngVal = parseFloat(document.getElementById('projectLng').value);
-
-      if (isNaN(latVal) || isNaN(lngVal)) {
-        alert("กรุณาระบุพิกัด Latitude และ Longitude เป็นตัวเลขที่ถูกต้อง");
-        return;
+      if (map && markersGroup) {
+        const marker = L.marker([p.lat, p.lng]).bindPopup(`
+          <div class="font-sans text-xs p-1" style="min-width: 180px;">
+            <img src="${p.image}" class="w-full h-24 object-cover rounded mb-2" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
+            <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
+            <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
+            <div class="mt-2 flex justify-between items-center gap-2">
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${p.status}</span>
+              <a href="${gmapsUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white !text-white px-2.5 py-1 rounded text-[11px] font-bold flex items-center gap-1 no-underline shadow">
+                <i class="fa-solid fa-diamond-turn-right text-white"></i> นำทาง
+              </a>
+            </div>
+          </div>
+        `);
+        markersGroup.addLayer(marker);
+        p.markerRef = marker;
       }
 
-      const newProject = {
-        id: "P" + Date.now(),
-        name: document.getElementById('projectName').value,
-        status: document.getElementById('projectStatus').value,
-        address: document.getElementById('projectAddress').value || "ไม่ระบุที่อยู่",
-        lat: latVal,
-        lng: lngVal,
-        image: base64Image || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80",
-        details: document.getElementById('projectDetails').value || "-"
+      const card = document.createElement('div');
+      card.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition cursor-pointer flex flex-col gap-2 group";
+      card.innerHTML = `
+        <div class="flex gap-3">
+          <img src="${p.image}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover bg-slate-100 shrink-0" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
+          <div class="flex-1 flex flex-col justify-between overflow-hidden">
+            <div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeColor}">${p.status}</span>
+              <h4 class="font-bold text-slate-800 text-sm truncate mt-1 group-hover:text-blue-600 transition-colors">${p.name}</h4>
+              <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot text-slate-400"></i> ${p.address}</p>
+            </div>
+            <p class="text-[11px] text-slate-600 line-clamp-1 mt-1">${p.details}</p>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center gap-2">
+          <a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" 
+             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow">
+            <i class="fa-solid fa-diamond-turn-right text-white"></i>
+            <span>นำทาง</span>
+          </a>
+        </div>
+      `;
+
+      card.querySelector('.flex').onclick = () => {
+        if (map && p.markerRef) {
+          map.flyTo([p.lat, p.lng], 15);
+          p.markerRef.openPopup();
+        }
       };
+      listContainer.appendChild(card);
+    });
+  }
 
-      projects.unshift(newProject);
-
-      try {
-        localStorage.setItem('my_projects', JSON.stringify(projects));
-      } catch(err) {
-        console.warn("Storage full or blocked", err);
-      }
-
-      renderUI(projects);
-      toggleAdminModal();
-      
-      // Reset Form
-      document.getElementById('addProjectForm').reset();
-      base64Image = "";
-      document.getElementById('previewContainer').classList.add('hidden');
-      
-      if (map) {
-        map.flyTo([newProject.lat, newProject.lng], 15);
-      }
+  function previewImage(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        base64Image = e.target.result;
+        document.getElementById('imagePreview').src = base64Image;
+        document.getElementById('previewContainer').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
     }
-  </script>
+  }
+
+  function filterData() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    renderUI(projects.filter(p => p.name.toLowerCase().includes(query) || p.address.toLowerCase().includes(query) || p.status.toLowerCase().includes(query)));
+  }
+
+  function filterStatus(status) {
+    renderUI(status === 'ALL' ? projects : projects.filter(p => p.status === status));
+  }
+
+  function toggleAdminModal() {
+    document.getElementById('adminModal').classList.toggle('hidden');
+  }
+
+  function getCurrentGPS() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          document.getElementById('projectLat').value = pos.coords.latitude.toFixed(6);
+          document.getElementById('projectLng').value = pos.coords.longitude.toFixed(6);
+        },
+        err => alert("ไม่สามารถดึงพิกัด GPS ได้ กรุณาเปิด Location Service")
+      );
+    } else {
+      alert("เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด GPS");
+    }
+  }
+
+  function locateUser() {
+    if (map) {
+      map.locate({setView: true, maxZoom: 15});
+      map.once('locationfound', (e) => {
+        L.circle(e.latlng, e.accuracy, { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
+        L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+      });
+    }
+  }
+
+  // ส่งข้อมูลไปบันทึกใน Google Sheets & Google Drive
+  async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.disabled = true;
+    submitBtn.innerText = "กำลังบันทึกข้อมูลและอัปโหลดรูป...";
+
+    const latVal = parseFloat(document.getElementById('projectLat').value);
+    const lngVal = parseFloat(document.getElementById('projectLng').value);
+
+    if (isNaN(latVal) || isNaN(lngVal)) {
+      alert("กรุณาระบุพิกัด Latitude และ Longitude เป็นตัวเลขที่ถูกต้อง");
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
+      return;
+    }
+
+    const payload = {
+      id: "P" + Date.now(),
+      name: document.getElementById('projectName').value,
+      status: document.getElementById('projectStatus').value,
+      address: document.getElementById('projectAddress').value || "ไม่ระบุที่อยู่",
+      lat: latVal,
+      lng: lngVal,
+      image: base64Image || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80",
+      details: document.getElementById('projectDetails').value || "-"
+    };
+
+    try {
+      const res = await fetch(WEB_APP_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      
+      const result = await res.json();
+      if (result.status === 'success') {
+        alert("บันทึกข้อมูลเรียบร้อยแล้ว!");
+        toggleAdminModal();
+        document.getElementById('addProjectForm').reset();
+        base64Image = "";
+        document.getElementById('previewContainer').classList.add('hidden');
+        
+        // โหลดข้อมูลใหม่จาก Sheet
+        await fetchProjects();
+        if (map) map.flyTo([payload.lat, payload.lng], 15);
+      } else {
+        alert("เกิดข้อผิดพลาด: " + result.message);
+      }
+    } catch (err) {
+      alert("ไม่สามารถเชื่อมต่อระบบได้ กรุณาตรวจสอบ URL หรือการเชื่อมต่ออินเทอร์เน็ต");
+      console.error(err);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerText = originalText;
+    }
+  }
+</script>
 </body>
 </html>
