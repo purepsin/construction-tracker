@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Construction Map Tracker</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    html, body { height: 100vh; margin: 0; padding: 0; overflow: hidden; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .leaflet-pane { z-index: 10 !important; }
+    .leaflet-top, .leaflet-bottom { z-index: 20 !important; }
+    
+    .sidebar-transition {
+      transition: all 0.3s ease-in-out;
+    }
+
+    /* ตกแต่ง Icon หมุดแผนที่แบบกำหนดเอง */
+    .custom-marker-pin {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 font-sans flex flex-col h-full w-full">
+
+  <!-- ================= HEADER ================= -->
+  <header class="bg-slate-900 text-white px-4 py-3 shadow-md flex justify-between items-center z-[100] shrink-0">
+    <div class="flex items-center gap-3">
+      <button onclick="toggleSidebar()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-lg transition" title="ซ่อน/แสดง เมนู">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
+
+      <div class="bg-amber-500 text-slate-900 p-2 rounded-lg font-bold">
+        <i class="fa-solid fa-house-chimney text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base md:text-lg leading-tight">Construction Map Tracker</h1>
+        <p class="text-xs text-slate-400 hidden md:block">ระบบพิกัดหน้างานและไซต์ก่อสร้างออนไลน์</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <div class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar" class="sidebar-transition w-full md:w-[380px] bg-white border-r border-slate-200 flex flex-col z-[50] h-1/2 md:h-full shadow-lg shrink-0">
+      
+      <div class="p-3 border-b border-slate-200 bg-slate-900 text-white flex justify-between items-center shrink-0">
+        <span class="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-2">
+          <i class="fa-solid fa-list-check"></i> รายการโครงการทั้งหมด
+        </span>
+        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1 rounded text-sm" title="ยุบเมนู">
+          <i class="fa-solid fa-chevron-left hidden md:inline"></i>
+          <i class="fa-solid fa-chevron-up md:hidden"></i>
+        </button>
+      </div>
+
+      <!-- SEARCH & FILTER -->
+      <div class="p-3 border-b border-slate-100 bg-slate-50 space-y-2.5 shrink-0">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+          <input type="text" id="searchInput" oninput="filterData()" placeholder="ค้นหาชื่อบ้าน, ที่อยู่, สถานะ..." 
+                 class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+        </div>
+        
+        <div class="flex gap-1.5">
+          <button onclick="filterStatus('ALL')" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">ทั้งหมด</button>
+          <button onclick="filterStatus('สร้างเสร็จแล้ว')" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs px-3 py-1.5 rounded-full font-medium">เสร็จแล้ว</button>
+          <button onclick="filterStatus('กำลังก่อสร้าง')" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs px-3 py-1.5 rounded-full font-medium">กำลังสร้าง</button>
+        </div>
+      </div>
+
+      <!-- LIST DATA -->
+      <div id="projectList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+      
+      <div class="p-2 border-t text-center text-xs text-slate-400 shrink-0 bg-white">
+        พบข้อมูลทั้งหมด <span id="projectCount" class="font-bold text-slate-700">0</span> รายการ
+      </div>
+    </div>
+
+    <!-- MAP CONTAINER -->
+    <div class="flex-1 relative z-0 h-full bg-slate-200">
+      <div id="map" class="w-full h-full"></div>
+      
+      <button onclick="locateUser()" title="ค้นหาตำแหน่งของฉัน" 
+              class="absolute bottom-6 right-6 z-[30] bg-white hover:bg-slate-50 text-slate-700 p-3 rounded-full shadow-lg border border-slate-200 focus:outline-none text-lg flex items-center justify-center w-12 h-12">
+        <i class="fa-solid fa-crosshairs text-blue-600"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= SCRIPT ================= -->
+  <script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
+
+  let projects = [];
+  let map, markersGroup;
+  let isSidebarOpen = true;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      initMap();
+      fetchProjects();
+    }, 300);
+  });
+
+  function initMap() {
+    map = L.map('map').setView([14.9733, 102.0831], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    markersGroup = L.layerGroup().addTo(map);
+  }
+
+  // สร้าง Icon หมุดตามสถานะ (สร้างเสร็จแล้ว = สีเขียว, กำลังก่อสร้าง = สีส้ม)
+  function createCustomIcon(status) {
+    const isDone = status === 'สร้างเสร็จแล้ว';
+    const bgColor = isDone ? '#10b981' : '#f97316';
+    const iconClass = isDone ? 'fa-house-check' : 'fa-helmet-safety';
+
+    const htmlContent = `
+      <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+        <div style="
+          background-color: ${bgColor};
+          width: 34px;
+          height: 34px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+          position: absolute;
+        "></div>
+        <i class="fa-solid ${iconClass}" style="
+          color: white;
+          font-size: 13px;
+          position: relative;
+          z-index: 10;
+          transform: rotate(0deg);
+        "></i>
+      </div>
+    `;
+
+    return L.divIcon({
+      className: 'custom-marker-pin',
+      html: htmlContent,
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      popupAnchor: [0, -34]
+    });
+  }
+
+  // ดึงข้อมูลจาก Google Sheets
+  async function fetchProjects() {
+    try {
+      const res = await fetch(WEB_APP_URL);
+      const json = await res.json();
+      if (json.status === 'success') {
+        projects = json.data;
+        renderUI(projects);
+      }
+    } catch (err) {
+      console.error("Error loading data:", err);
+    }
+  }
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (isSidebarOpen) {
+      sidebar.classList.add('hidden');
+    } else {
+      sidebar.classList.remove('hidden');
+    }
+    isSidebarOpen = !isSidebarOpen;
+    
+    setTimeout(() => {
+      if(map) map.invalidateSize();
+    }, 300);
+  }
+
+  function renderUI(data) {
+    const listContainer = document.getElementById('projectList');
+    listContainer.innerHTML = '';
+    if (markersGroup) markersGroup.clearLayers();
+
+    document.getElementById('projectCount').innerText = data.length;
+
+    data.forEach(p => {
+      const isDone = p.status === 'สร้างเสร็จแล้ว';
+      const badgeColor = isDone ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
+      const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+
+      if (map && markersGroup) {
+        const customIcon = createCustomIcon(p.status);
+
+        const marker = L.marker([p.lat, p.lng], { icon: customIcon }).bindPopup(`
+          <div class="font-sans text-xs p-1" style="min-width: 200px;">
+            <img src="${p.image}" class="w-full h-24 object-cover rounded mb-2" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
+            <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
+            <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
+            <div class="mt-2 flex justify-between items-center border-t pt-2">
+              <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${p.status}</span>
+              <a href="${gmapsUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow">
+                <i class="fa-solid fa-diamond-turn-right"></i> นำทาง
+              </a>
+            </div>
+          </div>
+        `);
+        markersGroup.addLayer(marker);
+        p.markerRef = marker;
+      }
+
+      const card = document.createElement('div');
+      card.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition cursor-pointer flex flex-col gap-2 group";
+      card.innerHTML = `
+        <div class="flex gap-3">
+          <img src="${p.image}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover bg-slate-100 shrink-0" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
+          <div class="flex-1 flex flex-col justify-between overflow-hidden">
+            <div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeColor}">${p.status}</span>
+              <h4 class="font-bold text-slate-800 text-sm truncate mt-1 group-hover:text-blue-600 transition-colors">${p.name}</h4>
+              <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot text-slate-400"></i> ${p.address}</p>
+            </div>
+            <p class="text-[11px] text-slate-600 line-clamp-1 mt-1">${p.details}</p>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center">
+          <a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" 
+             class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition shadow">
+            <i class="fa-solid fa-diamond-turn-right text-white"></i>
+            <span>นำทางไปยังไซต์งาน</span>
+          </a>
+        </div>
+      `;
+
+      card.querySelector('.flex').onclick = () => {
+        if (map && p.markerRef) {
+          map.flyTo([p.lat, p.lng], 15);
+          p.markerRef.openPopup();
+        }
+      };
+      listContainer.appendChild(card);
+    });
+  }
+
+  function filterData() {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+    renderUI(projects.filter(p => p.name.toLowerCase().includes(query) || p.address.toLowerCase().includes(query) || p.status.toLowerCase().includes(query)));
+  }
+
+  function filterStatus(status) {
+    renderUI(status === 'ALL' ? projects : projects.filter(p => p.status === status));
+  }
+
+  function locateUser() {
+    if (map) {
+      map.locate({setView: true, maxZoom: 15});
+      map.once('locationfound', (e) => {
+        L.circle(e.latlng, e.accuracy, { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
+        L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+      });
+    }
+  }
+</script>
+</body>
+</html>
