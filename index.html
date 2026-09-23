@@ -187,8 +187,8 @@
   <script>
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
   
-  // นำ API Key ที่ได้จาก ImgBB มาวางตรงนี้
-  const IMGBB_API_KEY = "ใส่_API_KEY_ของ_ImgBB_ตรงนี้"; 
+  // ImgBB API Key
+  const IMGBB_API_KEY = "97f1a9893964ef32a3beebcd4b20e483"; 
 
   let projects = [];
   let map, markersGroup;
@@ -332,7 +332,7 @@
 
   // อัปโหลดภาพเข้า ImgBB API
   async function uploadToImgBB(file) {
-    if (!IMGBB_API_KEY || IMGBB_API_KEY.includes("97f1a9893964ef32a3beebcd4b20e483")) {
+    if (!IMGBB_API_KEY || IMGBB_API_KEY.includes("ใส่_API_KEY")) {
       throw new Error("กรุณาระบุ ImgBB API Key ก่อนใช้งาน");
     }
     const formData = new FormData();
