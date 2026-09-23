@@ -23,6 +23,12 @@
     .leaflet-pane { z-index: 10 !important; }
     .leaflet-top, .leaflet-bottom { z-index: 20 !important; }
     
+    /* แก้ไขปัญหา Leaflet บังคับสีแท็ก <a> จนบังตัวหนังสือ */
+    .leaflet-container a {
+      color: inherit;
+      text-decoration: none;
+    }
+    
     .sidebar-transition {
       transition: all 0.3s ease-in-out;
     }
@@ -211,6 +217,7 @@
       if (map && markersGroup) {
         const customIcon = createCustomIcon(p.status);
 
+        // กำหนด style="color: #ffffff !important;" ชัดเจนเพื่อไม่ให้ Leaflet CSS บังคับสีเดิม
         const marker = L.marker([p.lat, p.lng], { icon: customIcon }).bindPopup(`
           <div class="font-sans text-xs p-1" style="min-width: 200px;">
             <img src="${p.image}" class="w-full h-24 object-cover rounded mb-2" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
@@ -218,8 +225,9 @@
             <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
             <div class="mt-2 flex justify-between items-center border-t pt-2">
               <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${p.status}</span>
-              <a href="${gmapsUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow">
-                <i class="fa-solid fa-diamond-turn-right"></i> นำทาง
+              <a href="${gmapsUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-700 !text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 shadow" style="color: #ffffff !important;">
+                <i class="fa-solid fa-diamond-turn-right" style="color: #ffffff !important;"></i>
+                <span style="color: #ffffff !important;">นำทาง</span>
               </a>
             </div>
           </div>
@@ -244,9 +252,9 @@
         </div>
         <div class="pt-2 border-t border-slate-100 flex items-center">
           <a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" 
-             class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition shadow">
-            <i class="fa-solid fa-diamond-turn-right text-white"></i>
-            <span>นำทางไปยังไซต์งาน</span>
+             class="w-full bg-blue-600 hover:bg-blue-700 !text-white py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition shadow" style="color: #ffffff !important;">
+            <i class="fa-solid fa-diamond-turn-right" style="color: #ffffff !important;"></i>
+            <span style="color: #ffffff !important;">นำทางไปยังไซต์งาน</span>
           </a>
         </div>
       `;
