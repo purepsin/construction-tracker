@@ -26,6 +26,13 @@
     .sidebar-transition {
       transition: all 0.3s ease-in-out;
     }
+
+    /* ตกแต่ง Icon หมุดแผนที่แบบกำหนดเอง */
+    .custom-marker-pin {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
   </style>
 </head>
 <body class="bg-slate-100 font-sans flex flex-col h-full w-full">
@@ -215,6 +222,43 @@
     markersGroup = L.layerGroup().addTo(map);
   }
 
+  // สร้าง Icon หมุดตามสถานะ (สร้างเสร็จแล้ว = สีเขียว, กำลังก่อสร้าง = สีส้ม)
+  function createCustomIcon(status) {
+    const isDone = status === 'สร้างเสร็จแล้ว';
+    const bgColor = isDone ? '#10b981' : '#f97316'; // เขียว (Emerald) หรือ ส้ม (Orange)
+    const iconClass = isDone ? 'fa-house-check' : 'fa-helmet-safety'; // ไอคอนในหมุด
+
+    const htmlContent = `
+      <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+        <div style="
+          background-color: ${bgColor};
+          width: 34px;
+          height: 34px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          border: 2px solid #ffffff;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+          position: absolute;
+        "></div>
+        <i class="fa-solid ${iconClass}" style="
+          color: white;
+          font-size: 13px;
+          position: relative;
+          z-index: 10;
+          transform: rotate(0deg);
+        "></i>
+      </div>
+    `;
+
+    return L.divIcon({
+      className: 'custom-marker-pin',
+      html: htmlContent,
+      iconSize: [34, 34],
+      iconAnchor: [17, 34], // ให้ปลายแหลมชี้ที่พิกัดพอดี
+      popupAnchor: [0, -34]
+    });
+  }
+
   // ดึงข้อมูลจาก Google Sheets
   async function fetchProjects() {
     try {
@@ -256,7 +300,10 @@
       const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
 
       if (map && markersGroup) {
-        const marker = L.marker([p.lat, p.lng]).bindPopup(`
+        // ใช้ Icon หมุดตามสถานะ
+        const customIcon = createCustomIcon(p.status);
+
+        const marker = L.marker([p.lat, p.lng], { icon: customIcon }).bindPopup(`
           <div class="font-sans text-xs p-1" style="min-width: 200px;">
             <img src="${p.image}" class="w-full h-24 object-cover rounded mb-2" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
             <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
