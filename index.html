@@ -212,6 +212,60 @@
     }, 300);
   });
 
+  // ฟังก์ชันย่อขนาดและบีบอัดรูปภาพก่อนอัปโหลด
+  function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          // คำนวณอัตราส่วนเพื่อย่อขนาด
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error("ไม่สามารถบีบอัดรูปภาพได้"));
+            }
+          }, 'image/jpeg', quality);
+        };
+        
+        img.onerror = (err) => reject(err);
+      };
+      
+      reader.onerror = (err) => reject(err);
+    });
+  }
+
   function initMap() {
     map = L.map('map').setView([14.9733, 102.0831], 9);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -513,10 +567,13 @@
     try {
       let imageUrl = existingImageUrl || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80";
 
-      // หากมีการเลือกไฟล์รูปใหม่ ให้อัปโหลดเข้า ImgBB ก่อน
+      // หากมีการเลือกไฟล์รูปใหม่ ย่อขนาดไฟล์ก่อนอัปโหลดเข้า ImgBB
       if (selectedFile) {
+        submitBtn.innerText = "กำลังย่อขนาดรูปภาพ...";
+        const compressedFile = await compressImage(selectedFile, 1200, 1200, 0.7);
+
         submitBtn.innerText = "กำลังอัปโหลดรูปภาพไปยัง ImgBB...";
-        imageUrl = await uploadToImgBB(selectedFile);
+        imageUrl = await uploadToImgBB(compressedFile);
       }
 
       submitBtn.innerText = "กำลังบันทึกข้อมูล...";
