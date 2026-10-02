@@ -121,7 +121,7 @@
         <h3 id="modalTitle" class="font-bold text-base flex items-center gap-2">
           <i class="fa-solid fa-location-dot text-amber-500"></i> บันทึกข้อมูลพิกัดก่อสร้างใหม่
         </h3>
-        <button type="button" onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-lg">×</button>
+        <button type="button" onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
 
       <form id="addProjectForm" onsubmit="handleFormSubmit(event)" class="p-5 overflow-y-auto space-y-4">
@@ -301,7 +301,17 @@
   // สร้าง Icon หมุดตามสถานะ
   function createCustomIcon(status) {
     let bgColor = '#10b981'; // เสร็จแล้ว = เขียว
-    let innerIconHtml = `<i class="fa-solid fa-house-check" style="color: white; font-size: 13px; position: relative; z-index: 10;"></i>`;
+    let innerIconHtml = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="position: relative; z-index: 10;">
+        <path d="M22 22L2 22" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M2 11L10.1259 4.49931C11.2216 3.62279 12.7784 3.62279 13.8741 4.49931L22 11" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M15.5 5.5V3.5C15.5 3.22386 15.7239 3 16 3H18.5C18.7761 3 19 3.22386 19 3.5V8.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M4 22V9.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M20 22V9.5" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M15 22V17C15 15.5858 15 14.8787 14.5607 14.4393C14.1213 14 13.4142 14 12 14C10.5858 14 9.87868 14 9.43934 14.4393C9 14.8787 9 15.5858 9 17V22" stroke="#ffffff" stroke-width="1.8"/>
+        <path d="M14 9.5C14 10.6046 13.1046 11.5 12 11.5C10.8954 11.5 10 10.6046 10 9.5C10 8.39543 10.8954 7.5 12 7.5C13.1046 7.5 14 8.39543 14 9.5Z" stroke="#ffffff" stroke-width="1.8"/>
+      </svg>
+    `;
 
     if (status === 'กำลังก่อสร้าง') {
       bgColor = '#f97316'; // ส้ม
@@ -399,6 +409,7 @@
       if (p.status === 'เซ็นสัญญาแล้ว') badgeColor = 'bg-blue-100 text-blue-700 border-blue-300';
 
       const adminName = p.admin || 'เพียว';
+      const detailsText = p.details || '-';
       const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
 
       if (map && markersGroup) {
@@ -410,6 +421,7 @@
             <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
             <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
             <p class="text-slate-600 text-[11px] mb-1"><i class="fa-solid fa-user-gear text-amber-600"></i> ผู้ดูแล: <span class="font-bold text-slate-700">${adminName}</span></p>
+            <p class="text-slate-600 text-[11px] mb-1"><i class="fa-solid fa-file-lines text-amber-600"></i> รายละเอียดงาน: <span class="text-slate-700">${detailsText}</span></p>
             
             <div class="mt-2 pt-2 border-t flex flex-col gap-2">
               <div class="flex justify-between items-center">
