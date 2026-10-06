@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ผลงานและหน้างานก่อสร้างบ้าน | แผนที่โครงการ</title>
+<link rel="icon" type="image/webp" href="https://i.ibb.co/jvVJd7xY/762219.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{font-family:'Noto Sans Thai',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+  .noscroll::-webkit-scrollbar{display:none}.noscroll{scrollbar-width:none}
+  .leaflet-container{font-family:inherit}
+  .pin{width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+  .pin i{transform:rotate(45deg);color:#fff;font-size:14px}
+  .pin.active{transform:rotate(-45deg) scale(1.25);box-shadow:0 0 0 4px rgba(245,158,11,.5),0 6px 10px rgba(0,0,0,.4)}
+  #panel{background:#fff;z-index:1000;display:flex;flex-direction:column}
+  #detail{z-index:1100}
+  @media(min-width:768px){
+    #panel{position:absolute;top:0;bottom:0;left:0;width:400px;box-shadow:4px 0 16px rgba(0,0,0,.08)}
+    #mapWrap{left:400px}
+    #detail{left:416px;bottom:16px;width:380px;border-radius:16px}
+    #handle{display:none}
+  }
+  @media(max-width:767px){
+    #panel{position:fixed;left:0;right:0;bottom:0;height:calc(152px + env(safe-area-inset-bottom));border-radius:20px 20px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.18);transition:height .3s ease}
+    #panel.open{height:76dvh}
+    body.detail-open #panel,body.panel-open #locateBtn,body.panel-open #legend{display:none}
+    body.detail-open #locateBtn{bottom:calc(var(--detail-h,300px) + 12px)!important}
+    #detail{left:0;right:0;bottom:0;border-radius:20px 20px 0 0;max-height:70dvh;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom)}
+    .leaflet-control-zoom{display:none}
+  }
+  .fadein{animation:fi .25s ease}@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .skeleton{background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);background-size:200% 100%;animation:sk 1.2s infinite}@keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body class="bg-slate-100 flex flex-col text-slate-800">
+
+<!-- ============ HEADER ============ -->
+<header class="bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 z-[1200] shadow-md" style="padding-top:max(.625rem,env(safe-area-inset-top))">
+  <div class="flex items-center gap-3 min-w-0">
+    <div class="bg-amber-500 text-slate-900 w-10 h-10 rounded-xl flex items-center justify-center shrink-0"><i class="fa-solid fa-house-chimney text-lg"></i></div>
+    <div class="min-w-0">
+      <h1 class="font-bold text-base md:text-lg leading-tight truncate">ผลงานบ้านและหน้างานก่อสร้าง</h1>
+      <p class="text-xs text-slate-400 truncate">ดูตำแหน่งบ้านที่สร้างเสร็จแล้ว และไซต์งานที่กำลังก่อสร้าง</p>
+    </div>
+  </div>
+  <a id="contactBtn" href="#" class="hidden bg-amber-500 hover:bg-amber-400 text-slate-900 px-3.5 py-2 rounded-xl text-sm font-bold items-center gap-2 shrink-0">
+    <i class="fa-solid fa-phone"></i><span class="hidden sm:inline">ติดต่อสอบถาม</span>
+  </a>
+</header>
+
+<main class="flex-1 relative overflow-hidden">
+
+  <!-- ============ MAP ============ -->
+  <div id="mapWrap" class="absolute inset-0">
+    <div id="map" class="w-full h-full"></div>
+
+    <div id="legend" class="absolute top-3 left-3 z-[500] bg-white/95 backdrop-blur rounded-xl shadow-lg px-3 py-2 text-xs flex gap-3">
+      <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle text-emerald-500 text-[10px]"></i>สร้างเสร็จแล้ว</span>
+      <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle text-orange-500 text-[10px]"></i>กำลังก่อสร้าง</span>
+    </div>
+
+    <button id="locateBtn" onclick="locateUser()" aria-label="ตำแหน่งของฉัน"
+      class="absolute right-3 bottom-[168px] md:bottom-6 z-[500] bg-white text-blue-600 font-semibold px-4 py-3 rounded-full shadow-lg border border-slate-200 text-sm flex items-center gap-2 active:scale-95 transition">
+      <i class="fa-solid fa-location-crosshairs text-base"></i><span class="hidden sm:inline">ตำแหน่งของฉัน</span>
+    </button>
+  </div>
+
+  <!-- ============ PANEL (sidebar บน PC / bottom sheet บนมือถือ) ============ -->
+  <aside id="panel">
+    <button id="handle" onclick="togglePanel()" class="pt-2.5 pb-1 w-full flex flex-col items-center gap-1.5 shrink-0" aria-label="เปิด/ปิดรายการ">
+      <span class="w-10 h-1.5 rounded-full bg-slate-300"></span>
+      <span class="text-xs text-slate-500 font-medium"><span class="countText">0</span> โครงการ · <span id="handleHint">แตะเพื่อดูรายการ</span></span>
+    </button>
+
+    <div class="px-4 pt-2 md:pt-4 pb-2 shrink-0 space-y-3">
+      <div class="hidden md:block">
+        <h2 class="font-bold text-lg">ค้นหาโครงการ</h2>
+        <p class="text-xs text-slate-500">เลือกดูผลงานใกล้พื้นที่ของคุณ แล้วกด “นำทาง” เพื่อไปชมหน้างานจริง</p>
+      </div>
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input id="searchInput" type="search" inputmode="search" autocomplete="off" placeholder="ค้นหาชื่อบ้าน หรือพื้นที่..."
+          class="w-full pl-10 pr-4 py-3 bg-slate-100 rounded-xl text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white">
+      </div>
+      <div id="chips" class="flex gap-2 overflow-x-auto noscroll -mx-4 px-4"></div>
+    </div>
+
+    <div id="projectList" class="flex-1 overflow-y-auto px-4 pb-4 space-y-3 border-t border-slate-100 pt-3"></div>
+    <div class="px-4 py-2 border-t text-center text-xs text-slate-400 shrink-0 hidden md:block">พบ <b class="countText text-slate-700">0</b> โครงการ</div>
+  </aside>
+
+  <!-- ============ DETAIL CARD ============ -->
+  <section id="detail" class="hidden absolute bg-white shadow-2xl fadein"></section>
+</main>
+
+<!-- Lightbox -->
+<div id="imageModal" class="hidden fixed inset-0 bg-black/85 z-[2000] flex items-center justify-center p-4" onclick="closeImage()">
+  <button class="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white w-11 h-11 rounded-full text-xl" aria-label="ปิด">✕</button>
+  <img id="fullImg" src="" alt="" class="max-w-full max-h-[88vh] object-contain rounded-lg" onclick="event.stopPropagation()">
+</div>
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 top-20 z-[3000] bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
+const SHOW_SIGNED = false;        // true = แสดงโครงการสถานะ "เซ็นสัญญาแล้ว" ให้ลูกค้าเห็นด้วย
+const CONTACT_URL = "";           // เช่น "tel:0812345678" หรือ "https://line.me/ti/p/xxxx" (เว้นว่าง = ซ่อนปุ่ม)
+const MAP_CENTER = [14.9733, 102.0831], MAP_ZOOM = 9;
+
+const BUILD_SVG = `<svg width="18" height="18" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#fff" d="M61.287 53.542c-2.649-2.041-9.702-7.678-16.271-14.452c-4.366-4.505-6.223-9.015-9.533-12.429c-2.998-3.092-5.725-4.894-5.725-4.894l-.768.792l-5.188-5.35l2.004-2.067a.912.912 0 0 0 0-1.262l-.414-.427c.002-.002 5.898-7.936 13.353-5.742c.866.257 1.638.694 1.857.471c.298-.306-.837-1.482-1.502-2.162c-9.431-9.65-19.834 1.104-19.839 1.109l-.367-.379a.846.846 0 0 0-1.222 0l-9.239 9.528a.912.912 0 0 0 0 1.262s1.131 1.979-1.835 2.335c-1.194.145-1.942.414-2.366.769a431.18 431.18 0 0 0-1.979 2.009a.912.912 0 0 0 0 1.262l6.914 7.132a.847.847 0 0 0 1.223 0s1.906-1.99 1.947-2.042c.343-.438.605-1.208.743-2.44c.348-3.06 2.264-1.892 2.264-1.892a.846.846 0 0 0 1.224 0l2.004-2.067l5.186 5.349l-.768.793s1.748 2.813 4.746 5.905c3.309 3.413 7.683 5.328 12.05 9.833c6.567 6.774 12.032 14.047 14.014 16.78c.748 1.029.867.934 1.78-.009l2.849-2.938l2.847-2.937c.915-.946 1.009-1.068.011-1.84"/><path fill="#fff" d="M34.008 22.689a53.27 53.27 0 0 1 2.497 2.408c1.592 1.642 2.924 3.479 4.259 5.44l8.942-8.943A9.938 9.938 0 0 0 61.72 9.584L53.604 17.7l-5.76-1.543l-1.544-5.763l8.114-8.111a9.92 9.92 0 0 0-9.381 2.63a9.932 9.932 0 0 0-2.631 9.38l-8.394 8.396"/><path fill="#fff" d="M26.489 35.429a53.723 53.723 0 0 1-2.479-2.743l-9.717 9.718a9.926 9.926 0 0 0-9.381 2.629c-3.883 3.88-3.882 10.174 0 14.055a9.934 9.934 0 0 0 14.054 0a9.939 9.939 0 0 0 2.631-9.384l10.004-10.003c-1.84-1.338-3.567-2.679-5.112-4.272M13.483 57.821l-5.761-1.544l-1.543-5.762l4.218-4.215l5.76 1.541l1.543 5.763l-4.217 4.217"/></svg>`;
+const STATUS = {
+  'สร้างเสร็จแล้ว': { short:'เสร็จแล้ว',   color:'#10b981', icon:'fa-house',        badge:'bg-emerald-100 text-emerald-700' },
+  'กำลังก่อสร้าง':  { short:'กำลังสร้าง',  color:'#f97316', icon:'fa-helmet-safety', svg:BUILD_SVG, badge:'bg-orange-100 text-orange-700' },
+  'เซ็นสัญญาแล้ว':  { short:'เตรียมเริ่ม', color:'#3b82f6', icon:'fa-file-signature',badge:'bg-blue-100 text-blue-700' }
+};
+const PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect fill='#e2e8f0' width='400' height='300'/><text x='200' y='160' font-size='48' text-anchor='middle' fill='#94a3b8'>🏠</text></svg>`);
+
+/* ================= STATE ================= */
+let map, layer, userLayer;
+let all = [], filter = 'ALL', query = '', selectedId = null, userPos = null;
+const markers = {};
+const isMobile = () => window.innerWidth < 768;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const img = u => /^https?:\/\//.test(u || '') ? esc(u) : PLACEHOLDER;
+const navUrl = p => `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+
+/* ================= INIT ================= */
+document.addEventListener('DOMContentLoaded', () => {
+  if (CONTACT_URL) { const b = $('contactBtn'); b.href = CONTACT_URL; b.classList.remove('hidden'); b.classList.add('flex'); }
+  map = L.map('map', { zoomControl:false }).setView(MAP_CENTER, MAP_ZOOM);
+  L.control.zoom({ position:'topright' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+  layer = L.layerGroup().addTo(map);
+  userLayer = L.layerGroup().addTo(map);
+  map.on('click', () => { if (selectedId) closeDetail(); else if (isMobile()) setPanel(false); });
+
+  $('searchInput').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(true); });
+  $('searchInput').addEventListener('focus', () => { if (isMobile()) setPanel(true); });
+  $('chips').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b) { filter = b.dataset.f; render(true); } });
+  $('projectList').addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const c = e.target.closest('[data-id]'); if (c) selectProject(c.dataset.id);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeImage(); closeDetail(); } });
+  window.addEventListener('resize', () => map.invalidateSize());
+
+  showSkeleton();
+  load();
+});
+
+async function load() {
+  try {
+    const res = await fetch(WEB_APP_URL);
+    const json = await res.json();
+    if (json.status !== 'success') throw new Error(json.message);
+    all = (json.data || [])
+      .map(p => ({ ...p, lat: parseFloat(p.lat), lng: parseFloat(p.lng), id: String(p.id) }))
+      .filter(p => !isNaN(p.lat) && !isNaN(p.lng) && STATUS[p.status] && (SHOW_SIGNED || p.status !== 'เซ็นสัญญาแล้ว'));
+    render(true);
+  } catch (err) {
+    console.error(err);
+    $('projectList').innerHTML = `
+      <div class="text-center py-10 text-slate-500">
+        <i class="fa-solid fa-wifi text-3xl text-slate-300 mb-3"></i>
+        <p class="font-semibold text-slate-700">โหลดข้อมูลไม่สำเร็จ</p>
+        <p class="text-sm mb-4">กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</p>
+        <button onclick="showSkeleton();load()" class="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-semibold">ลองอีกครั้ง</button>
+      </div>`;
+  }
+}
+
+function showSkeleton() {
+  $('projectList').innerHTML = Array(3).fill(`<div class="flex gap-3"><div class="skeleton w-24 h-24 rounded-xl"></div><div class="flex-1 space-y-2 pt-1"><div class="skeleton h-4 w-3/4 rounded"></div><div class="skeleton h-3 w-1/2 rounded"></div><div class="skeleton h-3 w-2/3 rounded"></div></div></div>`).join('');
+}
+
+/* ================= RENDER ================= */
+function distKm(a, b) {
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function pinIcon(status, active) {
+  const s = STATUS[status];
+  return L.divIcon({
+    className: '', iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36],
+    html: `<div class="pin ${active ? 'active' : ''}" style="background:${s.color}">${s.svg ? `<span style="transform:rotate(45deg);display:flex">${s.svg}</span>` : `<i class="fa-solid ${s.icon}"></i>`}</div>`
+  });
+}
+
+function render(fit) {
+  const base = all.filter(p => !query || [p.name, p.address, p.status, p.details].some(t => String(t || '').toLowerCase().includes(query)));
+  const list = base.filter(p => filter === 'ALL' || p.status === filter);
+  if (userPos) list.forEach(p => p._d = distKm(userPos, p)), list.sort((a, b) => a._d - b._d);
+
+  // chips + count
+  const cnt = s => base.filter(p => p.status === s).length;
+  const chip = (f, label, n) => `<button data-f="${f}" class="shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition ${filter === f ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}">${label} <span class="opacity-60">${n}</span></button>`;
+  $('chips').innerHTML = chip('ALL', 'ทั้งหมด', base.length) + chip('สร้างเสร็จแล้ว', 'สร้างเสร็จแล้ว', cnt('สร้างเสร็จแล้ว')) + chip('กำลังก่อสร้าง', 'กำลังก่อสร้าง', cnt('กำลังก่อสร้าง'));
+  document.querySelectorAll('.countText').forEach(e => e.textContent = list.length);
+
+  // markers
+  layer.clearLayers();
+  Object.keys(markers).forEach(k => delete markers[k]);
+  list.forEach(p => {
+    const m = L.marker([p.lat, p.lng], { icon: pinIcon(p.status, p.id === selectedId), title: p.name }).addTo(layer);
+    m.on('click', e => { L.DomEvent.stopPropagation(e); selectProject(p.id, true); });
+    markers[p.id] = m;
+  });
+  if (fit && list.length) map.fitBounds(L.latLngBounds(list.map(p => [p.lat, p.lng])), { padding:[50, 50], maxZoom:14 });
+
+  // list
+  $('projectList').innerHTML = list.length ? list.map(card).join('') : `
+    <div class="text-center py-12 text-slate-500"><i class="fa-regular fa-face-frown text-3xl text-slate-300 mb-3"></i>
+    <p class="font-semibold text-slate-700">ไม่พบโครงการที่ค้นหา</p><p class="text-sm">ลองเปลี่ยนคำค้นหา หรือเลือก “ทั้งหมด”</p></div>`;
+}
+
+function card(p) {
+  const s = STATUS[p.status];
+  return `
+  <article data-id="${esc(p.id)}" class="flex gap-3 p-2.5 rounded-2xl border ${p.id === selectedId ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white'} shadow-sm hover:shadow-md hover:border-amber-400 active:scale-[.99] cursor-pointer transition">
+    <img src="${img(p.image)}" alt="" loading="lazy" onerror="this.src='${PLACEHOLDER}'" class="w-24 h-24 rounded-xl object-cover bg-slate-100 shrink-0">
+    <div class="flex-1 min-w-0 flex flex-col">
+      <span class="self-start text-[11px] font-bold px-2 py-0.5 rounded-full ${s.badge}"><i class="fa-solid ${s.icon} mr-1"></i>${p.status}</span>
+      <h3 class="font-bold text-[15px] leading-snug mt-1 truncate">${esc(p.name)}</h3>
+      <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>${esc(p.address)}</p>
+      <div class="mt-auto flex items-center justify-between pt-1">
+        <span class="text-xs text-slate-400">${p._d != null ? `<i class="fa-solid fa-route mr-1"></i>ห่าง ${p._d < 10 ? p._d.toFixed(1) : Math.round(p._d)} กม.` : ''}</span>
+        <a href="${navUrl(p)}" target="_blank" rel="noopener" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 py-1 px-2 -mr-1"><i class="fa-solid fa-diamond-turn-right"></i>นำทาง</a>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* ================= DETAIL ================= */
+function selectProject(id, fromMap) {
+  const p = all.find(x => x.id === String(id)); if (!p) return;
+  const prev = selectedId;
+  selectedId = p.id;
+  if (markers[prev]) markers[prev].setIcon(pinIcon(all.find(x => x.id === prev).status, false));
+  if (markers[p.id]) markers[p.id].setIcon(pinIcon(p.status, true));
+
+  const s = STATUS[p.status];
+  const d = $('detail');
+  d.innerHTML = `
+    <div class="relative">
+      <img src="${img(p.image)}" alt="${esc(p.name)}" onclick="openImage(this.src)" onerror="this.src='${PLACEHOLDER}'" class="w-full h-44 md:h-48 object-cover md:rounded-t-2xl rounded-t-[20px] cursor-zoom-in bg-slate-100">
+      <button onclick="closeDetail()" aria-label="ปิด" class="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/55 hover:bg-black/75 text-white text-lg">✕</button>
+      <span class="absolute bottom-3 left-3 text-xs bg-black/55 text-white px-2.5 py-1 rounded-full"><i class="fa-solid fa-magnifying-glass-plus mr-1"></i>แตะรูปเพื่อขยาย</span>
+    </div>
+    <div class="p-4 space-y-3">
+      <div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full ${s.badge}"><i class="fa-solid ${s.icon} mr-1"></i>${p.status}</span>
+        <h2 class="font-bold text-lg leading-snug mt-2">${esc(p.name)}</h2>
+        <p class="text-sm text-slate-500 mt-0.5"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>${esc(p.address)}</p>
+      </div>
+      ${p.details && p.details !== '-' ? `<div class="bg-slate-50 rounded-xl p-3 text-sm text-slate-600 leading-relaxed"><p class="text-xs font-bold text-slate-400 mb-1">รายละเอียดงาน</p>${esc(p.details)}</div>` : ''}
+      <a href="${navUrl(p)}" target="_blank" rel="noopener" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow">
+        <i class="fa-solid fa-diamond-turn-right"></i>นำทางไปยังหน้างาน
+      </a>
+    </div>`;
+  d.classList.remove('hidden');
+  document.body.classList.add('detail-open');
+  document.body.classList.remove('panel-open');
+  $('panel').classList.remove('open');
+  requestAnimationFrame(() => document.body.style.setProperty('--detail-h', d.offsetHeight + 'px'));
+
+  // เลื่อนหมุดให้อยู่เหนือการ์ดบนมือถือ
+  let target = [p.lat, p.lng];
+  if (isMobile()) { const pt = map.project(target, 16); pt.y += d.offsetHeight / 2.2; target = map.unproject(pt, 16); }
+  else { const pt = map.project(target, 16); pt.x -= 0; target = map.unproject(pt, 16); }
+  map.flyTo(target, Math.max(map.getZoom(), 16), { duration:.7 });
+  render(false);
+  const el = document.querySelector(`#projectList [data-id="${CSS.escape(p.id)}"]`);
+  if (el && !fromMap) el.scrollIntoView({ block:'nearest' });
+}
+
+function closeDetail() {
+  if (!selectedId) return;
+  const p = all.find(x => x.id === selectedId);
+  if (markers[selectedId] && p) markers[selectedId].setIcon(pinIcon(p.status, false));
+  selectedId = null;
+  $('detail').classList.add('hidden');
+  document.body.classList.remove('detail-open');
+  render(false);
+}
+
+/* ================= PANEL (มือถือ) ================= */
+function setPanel(open) {
+  $('panel').classList.toggle('open', open);
+  document.body.classList.toggle('panel-open', open);
+  $('handleHint').textContent = open ? 'แตะเพื่อปิดรายการ' : 'แตะเพื่อดูรายการ';
+  if (!open) $('searchInput').blur();
+}
+function togglePanel() { setPanel(!$('panel').classList.contains('open')); }
+
+/* ================= LOCATION ================= */
+function locateUser() {
+  if (!navigator.geolocation) return toast('เบราว์เซอร์นี้ไม่รองรับการระบุตำแหน่ง');
+  toast('กำลังหาตำแหน่งของคุณ...');
+  navigator.geolocation.getCurrentPosition(pos => {
+    userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    userLayer.clearLayers();
+    L.circle([userPos.lat, userPos.lng], { radius: pos.coords.accuracy, color:'#3b82f6', fillOpacity:.15, weight:1 }).addTo(userLayer);
+    L.circleMarker([userPos.lat, userPos.lng], { radius:8, color:'#fff', weight:3, fillColor:'#2563eb', fillOpacity:1 }).addTo(userLayer).bindTooltip('คุณอยู่ที่นี่');
+    map.flyTo([userPos.lat, userPos.lng], 12);
+    render(false);
+    toast('เรียงโครงการจากใกล้ที่สุดให้แล้ว');
+  }, () => toast('ไม่สามารถระบุตำแหน่งได้ กรุณาอนุญาตการเข้าถึงตำแหน่ง'), { enableHighAccuracy:true, timeout:10000 });
+}
+
+/* ================= UI HELPERS ================= */
+function openImage(u) { $('fullImg').src = u; $('imageModal').classList.remove('hidden'); }
+function closeImage() { $('imageModal').classList.add('hidden'); }
+let tt; function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(() => t.classList.add('hidden'), 2600); }
+</script>
+</body>
+</html>
