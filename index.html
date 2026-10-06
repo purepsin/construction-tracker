@@ -253,7 +253,7 @@ function renderUI(data) {
         <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${esc(p.address)}</p>
         <p class="mb-1"><i class="fa-solid fa-user-gear text-amber-600"></i> ผู้ดูแล: <b>${esc(p.admin)}</b></p>
         <p class="mb-1"><i class="fa-solid fa-tag text-amber-600"></i> ราคา: <b>${money(p.price)}</b></p>
-        <p class="mb-1"><i class="fa-solid fa-phone text-amber-600"></i> ${phone}</p>
+        <p class="mb-1"> ${phone}</p>  <!-- ===== เบอร์ลูกค้า ==== -->
         <p class="mb-2 text-slate-600">${esc(p.details)}</p>
         <div class="flex items-center justify-between mb-2">
           <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${badgeClass(p)}">${esc(p.status)}</span>${lamps(p)}
