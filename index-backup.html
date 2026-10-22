@@ -1,630 +1,562 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Construction Map Tracker</title>
-  <link rel="icon" type="image/webp" href="https://i.ibb.co/jvVJd7xY/762219.webp">
-
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <style>
-    html, body { height: 100vh; margin: 0; padding: 0; overflow: hidden; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-    .leaflet-pane { z-index: 10 !important; }
-    .leaflet-top, .leaflet-bottom { z-index: 20 !important; }
-    
-    .sidebar-transition {
-      transition: all 0.3s ease-in-out;
-    }
-
-    /* ตกแต่ง Icon หมุดแผนที่แบบกำหนดเอง */
-    .custom-marker-pin {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Construction Map Tracker</title>
+<link rel="icon" type="image/webp" href="https://i.ibb.co/jvVJd7xY/762219.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  html,body{height:100%;margin:0;overflow:hidden}
+  body{height:100dvh}
+  body,button,input,select,textarea,.leaflet-container,.leaflet-popup-content{font-family:'Kanit',sans-serif}
+  .leaflet-pane{z-index:10!important}.leaflet-top,.leaflet-bottom{z-index:20!important}
+  .custom-marker-pin{background:none;border:none}
+  #sidebar{display:flex}
+  body.collapsed #sidebar{display:none}
+  @media(max-width:767px){
+    #sidebar{display:none;position:absolute;inset:0;z-index:40;width:100%}
+    body.list #sidebar{display:flex}
+    .leaflet-popup-content{margin:10px}
+  }
+  .lamp{width:14px;height:14px;border-radius:50%;background:#e2e8f0;border:1px solid #cbd5e1}
+  .lamp.on{background:#22c55e;border-color:#16a34a;box-shadow:0 0 6px #4ade80}
+  /* Data-loading countdown: ring tracks waiting time; the moving bar is not a percentage. */
+  .load-ring{--countdown-percent:100%;width:116px;height:116px;border-radius:50%;padding:7px;
+    background:conic-gradient(#f59e0b var(--countdown-percent),#e2e8f0 0);transition:background .15s}
+  .load-ring-inner{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;flex-direction:column;background:#fff}
+  .load-running-bar{width:34%;height:100%;border-radius:999px;background:#f59e0b;
+    animation:load-travel 1.3s ease-in-out infinite alternate}
+  @keyframes load-travel{from{transform:translateX(0)}to{transform:translateX(194%)}}
+  @media(prefers-reduced-motion:reduce){.load-running-bar{animation:none;width:100%;opacity:.7}}
+</style>
 </head>
-<body class="bg-slate-100 font-sans flex flex-col h-full w-full">
+<body class="bg-slate-100 flex flex-col">
 
-  <!-- ================= HEADER ================= -->
-  <header class="bg-slate-900 text-white px-4 py-3 shadow-md flex justify-between items-center z-[100] shrink-0">
-    <div class="flex items-center gap-3">
-      <button onclick="toggleSidebar()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-lg transition" title="ซ่อน/แสดง เมนู">
-        <i class="fa-solid fa-bars text-lg"></i>
-      </button>
+<header class="bg-slate-900 text-white px-3 py-2.5 flex items-center gap-2 shrink-0 z-[100]">
+  <button onclick="toggleSidebar()" class="hidden md:block bg-slate-800 hover:bg-slate-700 w-10 h-10 rounded-lg" title="ซ่อน/แสดงรายการ"><i class="fa-solid fa-bars"></i></button>
+  <div class="bg-amber-500 text-slate-900 w-10 h-10 rounded-lg flex items-center justify-center"><i class="fa-solid fa-house-chimney"></i></div>
+  <div class="flex-1 min-w-0">
+    <h1 class="font-bold leading-tight truncate">Construction Map Tracker</h1>
+    <p class="text-xs text-slate-400 hidden sm:block">ระบบพิกัดหน้างาน (Admin)</p>
+  </div>
+  <button onclick="openAddModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 h-10 px-4 rounded-lg text-sm font-bold flex items-center gap-2 shadow">
+    <i class="fa-solid fa-plus"></i><span class="hidden sm:inline">เพิ่มหน้างาน</span>
+  </button>
+</header>
 
-      <div class="bg-amber-500 text-slate-900 p-2 rounded-lg font-bold hidden sm:block">
-        <i class="fa-solid fa-house-chimney text-lg"></i>
+<main class="flex-1 flex relative overflow-hidden">
+  <aside id="sidebar" class="md:w-[400px] bg-white border-r border-slate-200 flex-col shrink-0 shadow-lg">
+    <div class="p-3 space-y-2 border-b bg-slate-50 shrink-0">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i>
+        <input id="searchInput" oninput="applyFilter()" placeholder="ค้นหาชื่อ, ที่อยู่, ผู้ดูแล, เบอร์โทร..." class="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-lg text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
       </div>
-      <div>
-        <h1 class="font-bold text-base md:text-lg leading-tight">Construction Map Tracker</h1>
-        <p class="text-xs text-slate-400 hidden md:block">ระบบพิกัดหน้างานและไซต์ก่อสร้างออนไลน์</p>
-      </div>
+      <div id="chips" class="flex gap-1.5 overflow-x-auto pb-0.5"></div>
     </div>
+    <div id="projectList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+    <div class="p-2 border-t text-center text-xs text-slate-400">พบ <b id="projectCount" class="text-slate-700">0</b> รายการ</div>
+  </aside>
 
-    <button onclick="openAddModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition shadow">
-      <i class="fa-solid fa-plus-circle"></i>
-      <span class="hidden sm:inline">เพิ่มพิกัดหน้างาน (Admin)</span>
-      <span class="sm:hidden">เพิ่ม</span>
+  <section class="flex-1 relative">
+    <div id="map" class="w-full h-full bg-slate-200"></div>
+    <button onclick="locateUser()" class="absolute bottom-4 right-4 z-[30] bg-white text-blue-600 font-bold w-12 h-12 md:w-auto md:px-4 rounded-full shadow-lg border flex items-center justify-center gap-2 text-sm active:scale-95">
+      <i class="fa-solid fa-crosshairs text-lg"></i><span class="hidden md:inline">ตำแหน่งของฉัน</span>
     </button>
-  </header>
+  </section>
+</main>
 
-  <!-- ================= MAIN CONTENT ================= -->
-  <div class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
+<nav class="md:hidden grid grid-cols-2 bg-slate-900 text-slate-300 shrink-0 z-[100]" style="padding-bottom:env(safe-area-inset-bottom)">
+  <button id="navMap" onclick="setView('map')" class="py-2.5 text-xs font-semibold flex flex-col items-center gap-0.5"><i class="fa-solid fa-map text-lg"></i>แผนที่</button>
+  <button id="navList" onclick="setView('list')" class="py-2.5 text-xs font-semibold flex flex-col items-center gap-0.5"><i class="fa-solid fa-list-ul text-lg"></i>รายการ</button>
+</nav>
 
-    <!-- SIDEBAR -->
-    <div id="sidebar" class="sidebar-transition w-full md:w-[380px] bg-white border-r border-slate-200 flex flex-col z-[50] h-1/2 md:h-full shadow-lg shrink-0">
-      
-      <div class="p-3 border-b border-slate-200 bg-slate-900 text-white flex justify-between items-center shrink-0">
-        <span class="text-xs font-bold uppercase tracking-wider text-amber-500 flex items-center gap-2">
-          <i class="fa-solid fa-list-check"></i> รายการโครงการทั้งหมด
-        </span>
-        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1 rounded text-sm" title="ยุบเมนู">
-          <i class="fa-solid fa-chevron-left hidden md:inline"></i>
-          <i class="fa-solid fa-chevron-up md:hidden"></i>
-        </button>
-      </div>
-
-      <div class="p-3 border-b border-slate-100 bg-slate-50 space-y-2.5 shrink-0">
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
-          <input type="text" id="searchInput" oninput="filterData()" placeholder="ค้นหาชื่อบ้าน, ที่อยู่, สถานะ..." 
-                 class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
-        </div>
-        
-        <div class="flex gap-1.5">
-          <button onclick="filterStatus('ALL')" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-full font-medium shadow-sm">ทั้งหมด</button>
-          <button onclick="filterStatus('สร้างเสร็จแล้ว')" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs px-3 py-1.5 rounded-full font-medium">เสร็จแล้ว</button>
-          <button onclick="filterStatus('กำลังก่อสร้าง')" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs px-3 py-1.5 rounded-full font-medium">กำลังสร้าง</button>
-        </div>
-      </div>
-
-      <!-- LIST DATA -->
-      <div id="projectList" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
-      
-      <div class="p-2 border-t text-center text-xs text-slate-400 shrink-0 bg-white">
-        พบข้อมูลทั้งหมด <span id="projectCount" class="font-bold text-slate-700">0</span> รายการ
-      </div>
+<!-- Data load countdown / connection status -->
+<div id="loadingOverlay" class="fixed inset-0 z-[20000] hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4" role="status" aria-live="polite" aria-label="สถานะการโหลดข้อมูล">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+    <div class="bg-slate-900 text-white px-5 py-4 flex items-center gap-3">
+      <div class="bg-amber-500 text-slate-900 h-10 w-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-map-location-dot"></i></div>
+      <div><h2 class="font-bold text-base">Construction Map Tracker</h2><p class="text-xs text-slate-300">เชื่อมต่อข้อมูลหน้างาน</p></div>
     </div>
-
-    <!-- MAP CONTAINER (แก้ไข h-full เป็น h-1/2 md:h-full) -->
-    <div class="flex-1 relative z-0 h-1/2 md:h-full bg-slate-200">
-      <div id="map" class="w-full h-full"></div>
-      
-      <!-- ปุ่มตำแหน่งของฉัน (มุมขวาล่าง) -->
-      <button onclick="locateUser()" title="ตำแหน่งของฉัน" 
-              class="absolute bottom-6 right-6 z-[30] bg-white hover:bg-slate-50 text-blue-600 font-bold px-4 py-2.5 rounded-full shadow-lg border border-slate-200 focus:outline-none text-xs md:text-sm flex items-center gap-2 transition active:scale-95">
-        <i class="fa-solid fa-crosshairs text-base"></i>
-        <span>ตำแหน่งของฉัน</span>
-      </button>
+    <div class="px-6 pt-7 pb-6 text-center">
+      <div id="loadingRing" class="load-ring mx-auto mb-5" aria-hidden="true">
+        <div class="load-ring-inner"><strong id="loadingSeconds" class="text-4xl leading-none text-slate-800">15</strong><span class="text-[11px] text-slate-500 mt-1">วินาที</span></div>
+      </div>
+      <h3 id="loadingTitle" class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูลโครงการ</h3>
+      <p id="loadingDescription" class="text-sm text-slate-500 mt-2 min-h-[40px]">กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...</p>
+      <div id="loadingBarTrack" class="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-4"><div id="loadingBar" class="load-running-bar"></div></div>
+      <p id="loadingHint" class="text-xs text-slate-400 mt-3">หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ</p>
+      <button type="button" id="retryLoadingBtn" onclick="fetchProjects()" class="hidden mt-5 w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3"><i class="fa-solid fa-rotate-right mr-1"></i> ลองโหลดข้อมูลอีกครั้ง</button>
     </div>
   </div>
+</div>
 
-  <!-- ================= MODAL ADD/EDIT SITE ================= -->
-  <div id="adminModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex justify-center items-center hidden p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-      
-      <div class="bg-slate-900 text-white px-5 py-4 flex justify-between items-center shrink-0">
-        <h3 id="modalTitle" class="font-bold text-base flex items-center gap-2">
-          <i class="fa-solid fa-location-dot text-amber-500"></i> บันทึกข้อมูลพิกัดก่อสร้างใหม่
-        </h3>
-        <button type="button" onclick="closeAdminModal()" class="text-slate-400 hover:text-white text-lg">×</button>
-      </div>
-
-      <form id="addProjectForm" onsubmit="handleFormSubmit(event)" class="p-5 overflow-y-auto space-y-4">
+<!-- Add/Edit modal -->
+<div id="adminModal" class="fixed inset-0 bg-slate-900/60 z-[9999] hidden items-end md:items-center justify-center md:p-4">
+  <div class="bg-white w-full max-w-lg rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh]">
+    <div class="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center rounded-t-2xl shrink-0">
+      <h3 id="modalTitle" class="font-bold"></h3>
+      <button type="button" onclick="closeAdminModal()" class="w-8 h-8 text-slate-300 hover:text-white text-lg">✕</button>
+    </div>
+    <form id="addProjectForm" onsubmit="handleFormSubmit(event)" class="flex flex-col min-h-0">
+      <div class="p-5 overflow-y-auto space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ชื่อโครงการ / บ้านลูกค้า *</label>
-          <input type="text" id="projectName" required placeholder="เช่น บ้านคุณสมชาย - แปลง A" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <label class="lbl">ชื่อโครงการ / บ้านลูกค้า *</label>
+          <input id="projectName" required placeholder="เช่น บ้านคุณสมชาย - แปลง A" class="inp">
         </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">สถานะโครงการ</label>
-          <select id="projectStatus" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
-            <option value="กำลังก่อสร้าง">กำลังก่อสร้าง</option>
-            <option value="สร้างเสร็จแล้ว">สร้างเสร็จแล้ว</option>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">สถานะ *</label>
+            <select id="projectStatus" onchange="toggleStep()" class="inp">
+              <option>เซ็นสัญญาแล้ว</option><option>กำลังก่อสร้าง</option><option>สร้างเสร็จแล้ว</option>
+            </select></div>
+          <div><label class="lbl">ผู้ดูแล *</label>
+            <select id="projectAdmin" class="inp"><option>เพียว</option><option>อาร์ม</option></select></div>
+        </div>
+        <div id="stepBox" class="hidden">
+          <label class="lbl">งวดงานปัจจุบัน</label>
+          <select id="projectStep" class="inp">
+            <option value="1">งวดที่ 1</option><option value="2">งวดที่ 2</option><option value="3">งวดที่ 3</option><option value="4">งวดที่ 4</option>
           </select>
         </div>
-
-        <!-- กล่องเลือกไฟล์รูปภาพ + ปุ่มถ่ายรูป -->
-        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
-          <label class="block text-xs font-bold text-slate-700 uppercase mb-2">รูปภาพหน้างาน / บ้าน</label>
-          
-          <div class="grid grid-cols-2 gap-2 mb-2">
-            <!-- ปุ่มถ่ายภาพด้วยกล้องมือถือ -->
-            <label class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-lg text-xs font-bold text-center cursor-pointer flex items-center justify-center gap-2 shadow transition">
-              <i class="fa-solid fa-camera text-sm"></i>
-              <span>ถ่ายภาพหน้างาน</span>
-              <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="previewImage(event)" class="hidden">
-            </label>
-
-            <!-- ปุ่มเลือกไฟล์จากอัลบั้ม -->
-            <label class="bg-slate-200 hover:bg-slate-300 text-slate-700 py-2 px-3 rounded-lg text-xs font-bold text-center cursor-pointer flex items-center justify-center gap-2 transition">
-              <i class="fa-solid fa-image text-sm"></i>
-              <span>เลือกจากเครื่อง</span>
-              <input type="file" id="fileInput" accept="image/*" onchange="previewImage(event)" class="hidden">
-            </label>
-          </div>
-
-          <div id="previewContainer" class="mt-2 hidden relative rounded-lg overflow-hidden border border-slate-300 bg-white">
-            <img id="imagePreview" src="" class="w-full h-40 object-cover">
-          </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">ราคา (บาท)</label>
+            <input type="number" inputmode="decimal" id="projectPrice" placeholder="เช่น 2500000" class="inp"></div>
+          <div><label class="lbl">เบอร์โทรลูกค้า</label>
+            <input type="tel" id="projectCall" placeholder="08x-xxx-xxxx" class="inp"></div>
         </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">ที่อยู่อย่างย่อ</label>
-          <input type="text" id="projectAddress" placeholder="เช่น อ.เมือง จ.นครราชสีมา" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <div class="bg-slate-50 p-3 rounded-lg border">
+          <label class="lbl">รูปภาพหน้างาน</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold text-center cursor-pointer"><i class="fa-solid fa-camera mr-1"></i>ถ่ายภาพ
+              <input type="file" accept="image/*" capture="environment" onchange="previewImage(event)" class="hidden"></label>
+            <label class="bg-slate-200 hover:bg-slate-300 text-slate-700 py-2.5 rounded-lg text-sm font-bold text-center cursor-pointer"><i class="fa-solid fa-image mr-1"></i>เลือกรูป
+              <input type="file" accept="image/*" onchange="previewImage(event)" class="hidden"></label>
+          </div>
+          <div id="previewContainer" class="mt-2 hidden rounded-lg overflow-hidden border"><img id="imagePreview" class="w-full h-40 object-cover"></div>
         </div>
-
-        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
+        <div><label class="lbl">ที่อยู่อย่างย่อ</label>
+          <input id="projectAddress" placeholder="เช่น อ.เมือง จ.นครราชสีมา" class="inp"></div>
+        <div class="bg-slate-50 p-3 rounded-lg border space-y-2">
           <div class="flex justify-between items-center">
-            <span class="text-xs font-bold text-slate-700 uppercase">พิกัดสถานที่ (Lat, Lng) *</span>
-            <button type="button" onclick="getCurrentGPS()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1">
-              <i class="fa-solid fa-location-arrow"></i> ดึงพิกัด (GPS)
-            </button>
+            <span class="lbl !mb-0">พิกัด (Lat, Lng) *</span>
+            <button type="button" onclick="getCurrentGPS()" class="text-sm text-blue-600 font-semibold"><i class="fa-solid fa-location-arrow"></i> ดึง GPS</button>
           </div>
           <div class="grid grid-cols-2 gap-2">
-            <input type="number" step="any" id="projectLat" required placeholder="Latitude" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
-            <input type="number" step="any" id="projectLng" required placeholder="Longitude" class="w-full border border-slate-300 rounded p-2 text-sm bg-white">
+            <input type="number" step="any" id="projectLat" required placeholder="Latitude" class="inp">
+            <input type="number" step="any" id="projectLng" required placeholder="Longitude" class="inp">
           </div>
         </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">รายละเอียดงาน</label>
-          <textarea id="projectDetails" rows="2" placeholder="ระบุรายละเอียดเพิ่มเติม..." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
-        </div>
-
-        <div class="pt-2 flex justify-end gap-2 border-t shrink-0">
-          <button type="button" onclick="closeAdminModal()" class="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100 font-medium">ยกเลิก</button>
-          <button type="submit" id="submitBtn" class="px-4 py-2 rounded-lg text-sm bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow">บันทึกข้อมูล</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ================= SCRIPT ================= -->
-  <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
-  
-  // ImgBB API Key
-  const IMGBB_API_KEY = "97f1a9893964ef32a3beebcd4b20e483"; 
-
-  let projects = [];
-  let map, markersGroup;
-  let isSidebarOpen = true;
-  
-  let selectedFile = null;
-  let editingId = null;
-  let existingImageUrl = "";
-
-  document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => {
-      initMap();
-      fetchProjects();
-    }, 300);
-  });
-
-  // ฟังก์ชันย่อขนาดและบีบอัดรูปภาพก่อนอัปโหลด
-  function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-
-          // คำนวณอัตราส่วนเพื่อย่อขนาด
-          if (width > height) {
-            if (width > maxWidth) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
-            }
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-                type: 'image/jpeg',
-                lastModified: Date.now()
-              });
-              resolve(compressedFile);
-            } else {
-              reject(new Error("ไม่สามารถบีบอัดรูปภาพได้"));
-            }
-          }, 'image/jpeg', quality);
-        };
-        
-        img.onerror = (err) => reject(err);
-      };
-      
-      reader.onerror = (err) => reject(err);
-    });
-  }
-
-  function initMap() {
-    map = L.map('map').setView([14.9733, 102.0831], 9);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    markersGroup = L.layerGroup().addTo(map);
-  }
-
-  // สร้าง Icon หมุดตามสถานะ (สร้างเสร็จแล้ว = สีเขียว, กำลังก่อสร้าง = สีส้ม)
-  function createCustomIcon(status) {
-    const isDone = status === 'สร้างเสร็จแล้ว';
-    const bgColor = isDone ? '#10b981' : '#f97316'; // เขียว (Emerald) หรือ ส้ม (Orange)
-    const iconClass = isDone ? 'fa-house-check' : 'fa-helmet-safety'; // ไอคอนในหมุด
-
-    const htmlContent = `
-      <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
-        <div style="
-          background-color: ${bgColor};
-          width: 34px;
-          height: 34px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 2px solid #ffffff;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-          position: absolute;
-        "></div>
-        <i class="fa-solid ${iconClass}" style="
-          color: white;
-          font-size: 13px;
-          position: relative;
-          z-index: 10;
-          transform: rotate(0deg);
-        "></i>
+        <div><label class="lbl">รายละเอียดงาน</label>
+          <textarea id="projectDetails" rows="2" placeholder="ระบุรายละเอียดเพิ่มเติม..." class="inp"></textarea></div>
       </div>
-    `;
+      <div class="p-3 border-t flex gap-2 shrink-0 bg-white" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">
+        <button type="button" onclick="closeAdminModal()" class="flex-1 md:flex-none px-5 py-3 rounded-lg text-sm text-slate-600 bg-slate-100 font-semibold">ยกเลิก</button>
+        <button type="submit" id="submitBtn" class="flex-[2] md:flex-none px-6 py-3 rounded-lg text-sm bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow">บันทึกข้อมูล</button>
+      </div>
+    </form>
+  </div>
+</div>
+<style>
+  .lbl{display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px}
+  .inp{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:10px;font-size:16px;background:#fff}
+  .inp:focus{outline:none;box-shadow:0 0 0 2px #f59e0b}
+  @media(min-width:768px){.inp{font-size:14px}}
+</style>
 
-    return L.divIcon({
-      className: 'custom-marker-pin',
-      html: htmlContent,
-      iconSize: [34, 34],
-      iconAnchor: [17, 34], // ให้ปลายแหลมชี้ที่พิกัดพอดี
-      popupAnchor: [0, -34]
-    });
-  }
+<!-- Image viewer -->
+<div id="imageModal" class="fixed inset-0 bg-black/80 z-[10000] hidden items-center justify-center p-4" onclick="closeImageModal()">
+  <button class="absolute top-4 right-4 text-white text-2xl w-10 h-10">✕</button>
+  <img id="fullSizeImage" class="max-w-full max-h-[88vh] object-contain rounded-lg">
+</div>
 
-  // ดึงข้อมูลจาก Google Sheets
-  async function fetchProjects() {
-    try {
-      const res = await fetch(WEB_APP_URL);
-      const json = await res.json();
-      if (json.status === 'success') {
-        projects = json.data;
-        renderUI(projects);
-      }
-    } catch (err) {
-      console.error("Error loading data:", err);
+<script>
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
+const IMGBB_API_KEY = "97f1a9893964ef32a3beebcd4b20e483";
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80";
+const STATUSES = [["ALL","ทั้งหมด"],["เซ็นสัญญาแล้ว","เซ็นสัญญาแล้ว"],["กำลังก่อสร้าง","กำลังสร้าง"],["สร้างเสร็จแล้ว","เสร็จแล้ว"]];
+
+let projects = [], map, markersGroup, selectedFile = null, editingId = null, existingImageUrl = "", curStatus = "ALL";
+const LOAD_COUNTDOWN_SECONDS = 15;
+const LOAD_TIMEOUT_MS = 30000;
+let loadingInterval = null, activeFetchController = null, fetchSequence = 0;
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $ = id => document.getElementById(id);
+const isBuilding = s => s === 'กำลังก่อสร้าง';
+const money = v => (v === "" || v == null || isNaN(v)) ? "-" : Number(v).toLocaleString('th-TH') + " บาท";
+
+document.addEventListener("DOMContentLoaded", () => {
+  renderChips(); initMap(); fetchProjects(); setView('map');
+});
+
+function renderChips() {
+  $('chips').innerHTML = STATUSES.map(([v, l]) =>
+    `<button onclick="filterStatus('${v}')" class="shrink-0 text-xs px-3 py-1.5 rounded-full font-semibold border ${v === curStatus ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-300'}">${l}</button>`).join('');
+}
+
+function setView(v) {
+  document.body.classList.toggle('list', v === 'list');
+  $('navMap').classList.toggle('text-amber-400', v === 'map');
+  $('navList').classList.toggle('text-amber-400', v === 'list');
+  if (map) setTimeout(() => map.invalidateSize(), 100);
+}
+function toggleSidebar() {
+  document.body.classList.toggle('collapsed');
+  setTimeout(() => map && map.invalidateSize(), 100);
+}
+
+function initMap() {
+  map = L.map('map').setView([14.9733, 102.0831], 9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  markersGroup = L.layerGroup().addTo(map);
+}
+
+// สีหมุด: เซ็นสัญญา -> อาร์ม = กรม, เพียว = ฟ้า
+function pinColor(p) {
+  if (p.status === 'กำลังก่อสร้าง') return '#f97316';
+  if (p.status === 'เซ็นสัญญาแล้ว') return p.admin === 'อาร์ม' ? '#1e3a8a' : '#3b82f6';
+  return '#10b981';
+}
+function pinSymbol(status) {
+  const icons = { 'กำลังก่อสร้าง': 'fa-hammer', 'เซ็นสัญญาแล้ว': 'fa-file-signature' };
+  return icons[status] || 'fa-house';
+}
+function createCustomIcon(p) {
+  return L.divIcon({
+    className: 'custom-marker-pin',
+    html: `<div style="position:relative;width:34px;height:34px">
+      <div style="background:${pinColor(p)};width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,.3);position:absolute"></div>
+      <i class="fa-solid ${pinSymbol(p.status)}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;padding-bottom:3px"></i></div>`,
+    iconSize: [34, 34], iconAnchor: [17, 34], popupAnchor: [0, -34]
+  });
+}
+
+function badgeClass(p) {
+  if (p.status === 'กำลังก่อสร้าง') return 'bg-amber-100 text-amber-700 border-amber-300';
+  if (p.status === 'เซ็นสัญญาแล้ว') return p.admin === 'อาร์ม' ? 'bg-blue-900 text-white border-blue-900' : 'bg-sky-100 text-sky-700 border-sky-300';
+  return 'bg-emerald-100 text-emerald-700 border-emerald-300';
+}
+
+// ไฟ 4 ดวง (เฉพาะสถานะกำลังก่อสร้าง)
+function lamps(p) {
+  if (!isBuilding(p.status)) return '';
+  const n = parseInt(p.step) || 0;
+  const dots = [1, 2, 3, 4].map(i => `<span class="lamp ${i <= n ? 'on' : ''}"></span>`).join('');
+  return `<div class="flex items-center gap-1.5" title="งวดที่ ${n}/4">${dots}<span class="text-[11px] text-slate-500 font-semibold ml-1">งวด ${n}/4</span></div>`;
+}
+
+function setLoadingSeconds(remaining) {
+  $('loadingSeconds').textContent = remaining;
+  $('loadingRing').style.setProperty('--countdown-percent', (remaining / LOAD_COUNTDOWN_SECONDS * 100) + '%');
+}
+
+function beginDataLoading() {
+  clearInterval(loadingInterval);
+  const started = Date.now();
+  setLoadingSeconds(LOAD_COUNTDOWN_SECONDS);
+  $('loadingTitle').textContent = 'กำลังโหลดข้อมูลโครงการ';
+  $('loadingDescription').textContent = 'กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...';
+  $('loadingHint').textContent = 'หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ';
+  $('retryLoadingBtn').classList.add('hidden');
+  $('loadingBarTrack').classList.remove('hidden');
+  $('loadingOverlay').classList.replace('hidden', 'flex');
+
+  loadingInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - started) / 1000);
+    const remaining = Math.max(0, LOAD_COUNTDOWN_SECONDS - elapsed);
+    setLoadingSeconds(remaining);
+    if (remaining === 0) {
+      $('loadingDescription').textContent = 'เซิร์ฟเวอร์ตอบกลับช้ากว่าปกติ ระบบยังรอข้อมูลอยู่...';
+      $('loadingHint').textContent = 'ตัวเลขเป็นเวลารอเบื้องต้น ไม่ใช่ความคืบหน้าการดาวน์โหลด';
+      clearInterval(loadingInterval);
+      loadingInterval = null;
     }
-  }
+  }, 250);
+}
 
-  function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    if (isSidebarOpen) {
-      sidebar.classList.add('hidden');
-    } else {
-      sidebar.classList.remove('hidden');
+function endDataLoading() {
+  clearInterval(loadingInterval);
+  loadingInterval = null;
+  $('loadingOverlay').classList.replace('flex', 'hidden');
+}
+
+function failDataLoading(message) {
+  clearInterval(loadingInterval);
+  loadingInterval = null;
+  $('loadingTitle').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  $('loadingDescription').textContent = message;
+  $('loadingHint').textContent = 'ตรวจสอบอินเทอร์เน็ตหรือการเข้าถึง Google Apps Script';
+  $('loadingBarTrack').classList.add('hidden');
+  $('retryLoadingBtn').classList.remove('hidden');
+  $('loadingRing').style.setProperty('--countdown-percent', '0%');
+  $('loadingSeconds').textContent = '!';
+}
+
+async function fetchProjects() {
+  // A new request supersedes an earlier one (for example after tapping Retry).
+  if (activeFetchController) activeFetchController.abort();
+  const controller = new AbortController();
+  activeFetchController = controller;
+  const seq = ++fetchSequence;
+  beginDataLoading();
+  let didTimeout = false;
+  const timeoutId = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, LOAD_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(WEB_APP_URL, { signal: controller.signal, cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const json = await response.json();
+    if (json.status !== 'success' || !Array.isArray(json.data)) {
+      throw new Error(json.message || 'รูปแบบข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง');
     }
-    isSidebarOpen = !isSidebarOpen;
-    
-    setTimeout(() => {
-      if(map) map.invalidateSize();
-    }, 300);
+    if (seq !== fetchSequence) return false;
+    projects = json.data;
+    applyFilter();
+    endDataLoading();
+    return true;
+  } catch (err) {
+    if (seq !== fetchSequence) return false;
+    console.error('โหลดข้อมูลโครงการไม่สำเร็จ:', err);
+    failDataLoading(didTimeout
+      ? 'รอการตอบกลับนานเกิน 30 วินาที กรุณาลองใหม่'
+      : 'ไม่สามารถเชื่อมต่อหรืออ่านข้อมูลจากเซิร์ฟเวอร์ได้');
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+    if (seq === fetchSequence) activeFetchController = null;
   }
+}
 
-  function renderUI(data) {
-    const listContainer = document.getElementById('projectList');
-    listContainer.innerHTML = '';
-    if (markersGroup) markersGroup.clearLayers();
+function applyFilter() {
+  const q = $('searchInput').value.trim().toLowerCase();
+  renderUI(projects.filter(p =>
+    (curStatus === 'ALL' || p.status === curStatus) &&
+    [p.name, p.address, p.status, p.admin, p.call].some(v => String(v ?? '').toLowerCase().includes(q))));
+}
+function filterStatus(s) { curStatus = s; renderChips(); applyFilter(); }
 
-    document.getElementById('projectCount').innerText = data.length;
+function renderUI(data) {
+  const list = $('projectList');
+  list.innerHTML = '';
+  markersGroup.clearLayers();
+  $('projectCount').innerText = data.length;
 
-    data.forEach(p => {
-      const isDone = p.status === 'สร้างเสร็จแล้ว';
-      const badgeColor = isDone ? 'bg-emerald-100 text-emerald-700 border-emerald-300' : 'bg-amber-100 text-amber-700 border-amber-300';
-      const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+  data.forEach(p => {
+    const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+    const img = p.image || FALLBACK_IMG;
+    const phone = p.call ? `<a href="tel:${esc(p.call)}" onclick="event.stopPropagation()" class="text-blue-600 font-semibold"><i class="fa-solid fa-phone"></i> ${esc(p.call)}</a>` : '<span class="text-slate-400">-</span>';
 
-      if (map && markersGroup) {
-        // ใช้ Icon หมุดตามสถานะ
-        const customIcon = createCustomIcon(p.status);
-
-        const marker = L.marker([p.lat, p.lng], { icon: customIcon }).bindPopup(`
-          <div class="font-sans text-xs p-1" style="min-width: 220px;">
-            <img src="${p.image}" class="w-full h-28 object-cover rounded mb-2" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
-            <strong class="text-slate-800 text-sm block leading-snug">${p.name}</strong>
-            <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${p.address}</p>
-            
-            <div class="mt-2 pt-2 border-t flex flex-col gap-2">
-              <div class="flex justify-between items-center">
-                <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${p.status}</span>
-                <div class="flex items-center gap-1">
-                  <button onclick="openEditModal('${p.id}')" class="bg-amber-500 hover:bg-amber-600 text-slate-900 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
-                    <i class="fa-solid fa-pen"></i> แก้ไข
-                  </button>
-                  <button onclick="deleteProject('${p.id}')" class="bg-rose-600 hover:bg-rose-700 text-white px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1">
-                    <i class="fa-solid fa-trash"></i> ลบ
-                  </button>
-                </div>
-              </div>
-              
-              <!-- ปุ่มนำทาง สีน้ำเงิน ตัวอักษรสีขาว -->
-              <a href="${gmapsUrl}" target="_blank" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow no-underline" style="color: white !important;">
-                <i class="fa-solid fa-diamond-turn-right text-white"></i>
-                <span>นำทาง</span>
-              </a>
-            </div>
-          </div>
-        `);
-        markersGroup.addLayer(marker);
-        p.markerRef = marker;
-      }
-
-      const card = document.createElement('div');
-      card.className = "bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition cursor-pointer flex flex-col gap-2 group";
-      card.innerHTML = `
-        <div class="flex gap-3">
-          <img src="${p.image}" class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg object-cover bg-slate-100 shrink-0" onerror="this.src='https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80'">
-          <div class="flex-1 flex flex-col justify-between overflow-hidden">
-            <div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeColor}">${p.status}</span>
-              <h4 class="font-bold text-slate-800 text-sm truncate mt-1 group-hover:text-blue-600 transition-colors">${p.name}</h4>
-              <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot text-slate-400"></i> ${p.address}</p>
-            </div>
-            <p class="text-[11px] text-slate-600 line-clamp-1 mt-1">${p.details}</p>
-          </div>
+    const marker = L.marker([p.lat, p.lng], { icon: createCustomIcon(p) }).bindPopup(`
+      <div class="text-xs" style="min-width:230px">
+        <img src="${esc(img)}" onclick="openImageModal('${esc(p.id)}')" class="w-full h-28 object-cover rounded mb-2 cursor-pointer" onerror="this.src='${FALLBACK_IMG}'">
+        <strong class="text-slate-800 text-sm block">${esc(p.name)}</strong>
+        <p class="text-slate-500 my-1"><i class="fa-solid fa-location-dot"></i> ${esc(p.address)}</p>
+        <p class="mb-1"><i class="fa-solid fa-user-gear text-amber-600"></i> ผู้ดูแล: <b>${esc(p.admin)}</b></p>
+        <p class="mb-1"><i class="fa-solid fa-tag text-amber-600"></i> ราคา: <b>${money(p.price)}</b></p>
+        <p class="mb-1"> ${phone}</p>  <!-- ===== เบอร์ลูกค้า ==== -->
+        <p class="mb-2 text-slate-600">${esc(p.details)}</p>
+        <div class="flex items-center justify-between mb-2">
+          <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${badgeClass(p)}">${esc(p.status)}</span>${lamps(p)}
         </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center gap-1.5">
-          <a href="${gmapsUrl}" target="_blank" onclick="event.stopPropagation();" 
-             class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition shadow">
-            <i class="fa-solid fa-diamond-turn-right text-white"></i>
-            <span>นำทาง</span>
-          </a>
-          <button onclick="event.stopPropagation(); openEditModal('${p.id}');" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-1.5 rounded-lg text-xs font-bold transition" title="แก้ไข">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button onclick="event.stopPropagation(); deleteProject('${p.id}');" class="bg-rose-100 hover:bg-rose-200 text-rose-700 p-1.5 rounded-lg text-xs font-bold transition" title="ลบ">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+        <div class="grid grid-cols-3 gap-1.5">
+          <a href="${gmaps}" target="_blank" style="color:#fff!important" class="col-span-1 bg-blue-600 py-2 rounded-lg font-bold text-center no-underline"><i class="fa-solid fa-diamond-turn-right"></i> นำทาง</a>
+          <button onclick="openEditModal('${esc(p.id)}')" class="bg-amber-500 py-2 rounded-lg font-bold"><i class="fa-solid fa-pen"></i> แก้ไข</button>
+          <button onclick="deleteProject('${esc(p.id)}')" class="bg-rose-600 text-white py-2 rounded-lg font-bold"><i class="fa-solid fa-trash"></i> ลบ</button>
         </div>
-      `;
+      </div>`);
+    markersGroup.addLayer(marker);
+    p.markerRef = marker;
 
-      card.querySelector('.flex').onclick = () => {
-        if (map && p.markerRef) {
-          map.flyTo([p.lat, p.lng], 15);
-          p.markerRef.openPopup();
-        }
+    const card = document.createElement('div');
+    card.className = "bg-white rounded-xl border border-slate-200 shadow-sm hover:border-amber-400 transition p-3 space-y-2";
+    card.innerHTML = `
+      <div class="flex gap-3 cursor-pointer" data-go>
+        <img src="${esc(img)}" onclick="event.stopPropagation();openImageModal('${esc(p.id)}')" class="w-20 h-20 rounded-lg object-cover bg-slate-100 shrink-0" onerror="this.src='${FALLBACK_IMG}'">
+        <div class="flex-1 min-w-0 space-y-1">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[10px] px-2 py-0.5 rounded-full border font-semibold ${badgeClass(p)}">${esc(p.status)}</span>
+            <span class="text-[11px] text-slate-500 truncate"><i class="fa-solid fa-user-gear text-amber-600"></i> ${esc(p.admin)}</span>
+          </div>
+          <h4 class="font-bold text-slate-800 text-sm truncate">${esc(p.name)}</h4>
+          <p class="text-xs text-slate-500 truncate"><i class="fa-solid fa-location-dot"></i> ${esc(p.address)}</p>
+          <p class="text-xs font-bold text-emerald-700">${money(p.price)}</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between text-xs min-h-[20px]">${phone}${lamps(p)}</div>
+      <div class="pt-2 border-t flex gap-2">
+        <a href="${gmaps}" target="_blank" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-lg text-sm font-bold text-center"><i class="fa-solid fa-diamond-turn-right"></i> นำทาง</a>
+        <button onclick="openEditModal('${esc(p.id)}')" class="w-11 bg-amber-100 text-amber-800 rounded-lg" title="แก้ไข"><i class="fa-solid fa-pen-to-square"></i></button>
+        <button onclick="deleteProject('${esc(p.id)}')" class="w-11 bg-rose-100 text-rose-700 rounded-lg" title="ลบ"><i class="fa-solid fa-trash-can"></i></button>
+      </div>`;
+    card.querySelector('[data-go]').onclick = () => {
+      setView('map');
+      map.flyTo([p.lat, p.lng], 15);
+      p.markerRef.openPopup();
+    };
+    list.appendChild(card);
+  });
+}
+
+function openImageModal(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p || !p.image) return;
+  $('fullSizeImage').src = p.image;
+  $('imageModal').classList.replace('hidden', 'flex');
+}
+function closeImageModal() { $('imageModal').classList.replace('flex', 'hidden'); }
+
+function toggleStep() { $('stepBox').classList.toggle('hidden', !isBuilding($('projectStatus').value)); }
+
+function previewImage(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  selectedFile = f;
+  const r = new FileReader();
+  r.onload = ev => { $('imagePreview').src = ev.target.result; $('previewContainer').classList.remove('hidden'); };
+  r.readAsDataURL(f);
+}
+
+function compressImage(file, maxW = 1200, maxH = 1200, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = reject;
+    r.onload = ev => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        else if (h >= w && h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        c.toBlob(b => b ? resolve(new File([b], "site.jpg", { type: 'image/jpeg' })) : reject(new Error("บีบอัดรูปไม่สำเร็จ")), 'image/jpeg', quality);
       };
-      listContainer.appendChild(card);
-    });
-  }
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
 
-  function previewImage(event) {
-    const file = event.target.files[0];
-    if (file) {
-      selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        document.getElementById('imagePreview').src = e.target.result;
-        document.getElementById('previewContainer').classList.remove('hidden');
-      };
-      reader.readAsDataURL(file);
+async function uploadToImgBB(file) {
+  const fd = new FormData();
+  fd.append("image", file);
+  const json = await (await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: fd })).json();
+  if (json.success) return json.data.url;
+  throw new Error(json.error?.message || "อัปโหลดรูปไม่สำเร็จ");
+}
+
+function openAddModal() {
+  editingId = null; selectedFile = null; existingImageUrl = "";
+  $('addProjectForm').reset();
+  $('projectAdmin').value = "เพียว";
+  $('previewContainer').classList.add('hidden');
+  $('modalTitle').innerHTML = `<i class="fa-solid fa-location-dot text-amber-500"></i> เพิ่มหน้างานใหม่`;
+  toggleStep();
+  $('adminModal').classList.replace('hidden', 'flex');
+}
+
+function openEditModal(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!p) return;
+  editingId = id; selectedFile = null; existingImageUrl = p.image;
+  $('projectName').value = p.name;
+  $('projectStatus').value = p.status;
+  $('projectAdmin').value = p.admin || "เพียว";
+  $('projectStep').value = p.step || "1";
+  $('projectPrice').value = p.price ?? "";
+  $('projectCall').value = p.call ?? "";
+  $('projectAddress').value = p.address;
+  $('projectLat').value = p.lat;
+  $('projectLng').value = p.lng;
+  $('projectDetails').value = p.details;
+  if (p.image) { $('imagePreview').src = p.image; $('previewContainer').classList.remove('hidden'); }
+  else $('previewContainer').classList.add('hidden');
+  $('modalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> แก้ไขข้อมูลหน้างาน`;
+  toggleStep();
+  map.closePopup();
+  $('adminModal').classList.replace('hidden', 'flex');
+}
+function closeAdminModal() { $('adminModal').classList.replace('flex', 'hidden'); }
+
+async function deleteProject(id) {
+  const p = projects.find(x => String(x.id) === String(id));
+  if (!confirm(`ต้องการลบ "${p ? p.name : 'รายการนี้'}" ใช่หรือไม่?`)) return;
+  try {
+    const r = await (await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "delete", id }) })).json();
+    if (r.status === 'success') { await fetchProjects(); } else alert("ลบไม่สำเร็จ: " + r.message);
+  } catch (e) { alert("ไม่สามารถลบได้ กรุณาตรวจสอบการเชื่อมต่อ"); }
+}
+
+function getCurrentGPS() {
+  if (!navigator.geolocation) return alert("เบราว์เซอร์นี้ไม่รองรับ GPS");
+  navigator.geolocation.getCurrentPosition(
+    pos => { $('projectLat').value = pos.coords.latitude.toFixed(6); $('projectLng').value = pos.coords.longitude.toFixed(6); },
+    () => alert("ดึงพิกัดไม่ได้ กรุณาเปิด Location Service"));
+}
+
+function locateUser() {
+  map.locate({ setView: true, maxZoom: 15 });
+  map.once('locationfound', e => {
+    L.circle(e.latlng, e.accuracy, { color: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
+    L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+  });
+}
+
+async function handleFormSubmit(e) {
+  e.preventDefault();
+  const btn = $('submitBtn'), original = btn.innerText;
+  const lat = parseFloat($('projectLat').value), lng = parseFloat($('projectLng').value);
+  if (isNaN(lat) || isNaN(lng)) return alert("กรุณาระบุพิกัดให้ถูกต้อง");
+  btn.disabled = true;
+  try {
+    let imageUrl = existingImageUrl || FALLBACK_IMG;
+    if (selectedFile) {
+      btn.innerText = "กำลังอัปโหลดรูป...";
+      imageUrl = await uploadToImgBB(await compressImage(selectedFile));
     }
+    btn.innerText = "กำลังบันทึก...";
+    const status = $('projectStatus').value;
+    const payload = {
+      action: editingId ? "update" : "create",
+      id: editingId || ("P" + Date.now()),
+      name: $('projectName').value,
+      status,
+      admin: $('projectAdmin').value,
+      address: $('projectAddress').value || "ไม่ระบุที่อยู่",
+      lat, lng, image: imageUrl,
+      details: $('projectDetails').value || "-",
+      price: $('projectPrice').value,
+      call: $('projectCall').value.trim(),
+      step: isBuilding(status) ? $('projectStep').value : ""
+    };
+    const r = await (await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify(payload) })).json();
+    if (r.status === 'success') {
+      closeAdminModal();
+      await fetchProjects();
+      setView('map');
+      map.flyTo([lat, lng], 15);
+    } else alert("เกิดข้อผิดพลาด: " + r.message);
+  } catch (err) {
+    alert("เกิดข้อผิดพลาด: " + err.message);
+  } finally {
+    btn.disabled = false; btn.innerText = original;
   }
-
-  // อัปโหลดภาพเข้า ImgBB API
-  async function uploadToImgBB(file) {
-    if (!IMGBB_API_KEY || IMGBB_API_KEY.includes("ใส่_API_KEY")) {
-      throw new Error("กรุณาระบุ ImgBB API Key ก่อนใช้งาน");
-    }
-    const formData = new FormData();
-    formData.append("image", file);
-
-    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-      method: "POST",
-      body: formData
-    });
-    const json = await res.json();
-    if (json.success) {
-      return json.data.url;
-    } else {
-      throw new Error(json.error?.message || "ไม่สามารถอัปโหลดรูปภาพไปยัง ImgBB ได้");
-    }
-  }
-
-  function openAddModal() {
-    editingId = null;
-    selectedFile = null;
-    existingImageUrl = "";
-    document.getElementById('addProjectForm').reset();
-    document.getElementById('previewContainer').classList.add('hidden');
-    document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-location-dot text-amber-500"></i> บันทึกข้อมูลพิกัดก่อสร้างใหม่`;
-    document.getElementById('adminModal').classList.remove('hidden');
-  }
-
-  function openEditModal(id) {
-    const item = projects.find(p => String(p.id) === String(id));
-    if (!item) return;
-
-    editingId = id;
-    selectedFile = null;
-    existingImageUrl = item.image;
-
-    document.getElementById('projectName').value = item.name;
-    document.getElementById('projectStatus').value = item.status;
-    document.getElementById('projectAddress').value = item.address;
-    document.getElementById('projectLat').value = item.lat;
-    document.getElementById('projectLng').value = item.lng;
-    document.getElementById('projectDetails').value = item.details;
-
-    if (item.image) {
-      document.getElementById('imagePreview').src = item.image;
-      document.getElementById('previewContainer').classList.remove('hidden');
-    } else {
-      document.getElementById('previewContainer').classList.add('hidden');
-    }
-
-    document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> แก้ไขข้อมูลพิกัดก่อสร้าง`;
-    document.getElementById('adminModal').classList.remove('hidden');
-  }
-
-  function closeAdminModal() {
-    document.getElementById('adminModal').classList.add('hidden');
-  }
-
-  async function deleteProject(id) {
-    const item = projects.find(p => String(p.id) === String(id));
-    const name = item ? item.name : "รายการนี้";
-    
-    if (!confirm(`คุณต้องการลบ "${name}" ใช่หรือไม่?`)) return;
-
-    try {
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "delete", id: id })
-      });
-      const result = await res.json();
-      if (result.status === 'success') {
-        alert("ลบข้อมูลเรียบร้อยแล้ว");
-        await fetchProjects();
-      } else {
-        alert("เกิดข้อผิดพลาดในการลบ: " + result.message);
-      }
-    } catch (err) {
-      alert("ไม่สามารถลบข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่อ");
-    }
-  }
-
-  function filterData() {
-    const query = document.getElementById('searchInput').value.toLowerCase();
-    renderUI(projects.filter(p => p.name.toLowerCase().includes(query) || p.address.toLowerCase().includes(query) || p.status.toLowerCase().includes(query)));
-  }
-
-  function filterStatus(status) {
-    renderUI(status === 'ALL' ? projects : projects.filter(p => p.status === status));
-  }
-
-  function getCurrentGPS() {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => {
-          document.getElementById('projectLat').value = pos.coords.latitude.toFixed(6);
-          document.getElementById('projectLng').value = pos.coords.longitude.toFixed(6);
-        },
-        err => alert("ไม่สามารถดึงพิกัด GPS ได้ กรุณาเปิด Location Service")
-      );
-    } else {
-      alert("เบราว์เซอร์นี้ไม่รองรับการดึงพิกัด GPS");
-    }
-  }
-
-  function locateUser() {
-    if (map) {
-      map.locate({setView: true, maxZoom: 15});
-      map.once('locationfound', (e) => {
-        L.circle(e.latlng, e.accuracy, { color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2 }).addTo(map);
-        L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
-      });
-    }
-  }
-
-  // บันทึก/แก้ไข ข้อมูล
-  async function handleFormSubmit(e) {
-    e.preventDefault();
-    
-    const submitBtn = document.getElementById('submitBtn');
-    const originalText = submitBtn.innerText;
-    submitBtn.disabled = true;
-
-    const latVal = parseFloat(document.getElementById('projectLat').value);
-    const lngVal = parseFloat(document.getElementById('projectLng').value);
-
-    if (isNaN(latVal) || isNaN(lngVal)) {
-      alert("กรุณาระบุพิกัด Latitude และ Longitude เป็นตัวเลขที่ถูกต้อง");
-      submitBtn.disabled = false;
-      return;
-    }
-
-    try {
-      let imageUrl = existingImageUrl || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80";
-
-      // หากมีการเลือกไฟล์รูปใหม่ ย่อขนาดไฟล์ก่อนอัปโหลดเข้า ImgBB
-      if (selectedFile) {
-        submitBtn.innerText = "กำลังย่อขนาดรูปภาพ...";
-        const compressedFile = await compressImage(selectedFile, 1200, 1200, 0.7);
-
-        submitBtn.innerText = "กำลังอัปโหลดรูปภาพ...";
-        imageUrl = await uploadToImgBB(compressedFile);
-      }
-
-      submitBtn.innerText = "กำลังบันทึกข้อมูล...";
-
-      const payload = {
-        action: editingId ? "update" : "create",
-        id: editingId || ("P" + Date.now()),
-        name: document.getElementById('projectName').value,
-        status: document.getElementById('projectStatus').value,
-        address: document.getElementById('projectAddress').value || "ไม่ระบุที่อยู่",
-        lat: latVal,
-        lng: lngVal,
-        image: imageUrl,
-        details: document.getElementById('projectDetails').value || "-"
-      };
-
-      const res = await fetch(WEB_APP_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      
-      const result = await res.json();
-      if (result.status === 'success') {
-        alert(editingId ? "แก้ไขข้อมูลเรียบร้อยแล้ว!" : "บันทึกข้อมูลเรียบร้อยแล้ว!");
-        closeAdminModal();
-        await fetchProjects();
-        if (map) map.flyTo([payload.lat, payload.lng], 15);
-      } else {
-        alert("เกิดข้อผิดพลาด: " + result.message);
-      }
-    } catch (err) {
-      alert("เกิดข้อผิดพลาด: " + err.message);
-      console.error(err);
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerText = originalText;
-    }
-  }
+}
 </script>
 </body>
 </html>
+
+
+
+
