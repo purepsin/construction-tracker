@@ -39,15 +39,38 @@
       justify-content: center;
       align-items: center;
     }
-  /* Data-loading countdown: ring tracks waiting time; the moving bar is not a percentage. */
-  .load-ring{--countdown-percent:100%;width:116px;height:116px;border-radius:50%;padding:7px;
-    background:conic-gradient(#f59e0b var(--countdown-percent),#e2e8f0 0);transition:background .15s}
-  .load-ring-inner{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;
-    justify-content:center;flex-direction:column;background:#fff}
-  .load-running-bar{width:34%;height:100%;border-radius:999px;background:#f59e0b;
-    animation:load-travel 1.3s ease-in-out infinite alternate}
-  @keyframes load-travel{from{transform:translateX(0)}to{transform:translateX(194%)}}
-  @media(prefers-reduced-motion:reduce){.load-running-bar{animation:none;width:100%;opacity:.7}}
+
+    /* ===== Loading UI ===== */
+    #loadingOverlay {
+      transition: opacity 0.3s ease;
+    }
+    #loadingOverlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loading-bar {
+      position: relative;
+      width: 180px;
+      height: 4px;
+      background: #e2e8f0;
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+    .loading-bar::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: #f59e0b;
+      border-radius: 9999px;
+      animation: loadingSlide 1.2s ease-in-out infinite;
+    }
+    @keyframes loadingSlide {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(350%); }
+    }
   </style>
 </head>
 <body class="bg-slate-100 font-sans flex flex-col h-full w-full">
@@ -111,6 +134,39 @@
     <!-- MAP CONTAINER -->
     <div class="flex-1 relative z-0 h-full bg-slate-200">
       <div id="map" class="w-full h-full"></div>
+
+      <!-- ===== LOADING OVERLAY (แสดงตอนโหลดข้อมูลจากเซิร์ฟเวอร์) ===== -->
+      <div id="loadingOverlay" class="absolute inset-0 z-[1000] bg-white/75 backdrop-blur-sm flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <!-- สถานะกำลังโหลด -->
+        <div id="loadingState" class="flex flex-col items-center gap-4">
+          <div class="relative w-16 h-16">
+            <div class="absolute inset-0 rounded-full border-4 border-slate-200"></div>
+            <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-amber-500 animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-amber-500">
+              <i class="fa-solid fa-map-location-dot text-xl"></i>
+            </div>
+          </div>
+          <div>
+            <p class="font-bold text-slate-800 text-sm md:text-base">กำลังโหลดข้อมูลจากเซิร์ฟเวอร์...</p>
+            <p class="text-xs text-slate-500 mt-1">กรุณารอสักครู่</p>
+          </div>
+          <div class="loading-bar"></div>
+        </div>
+
+        <!-- สถานะผิดพลาด -->
+        <div id="errorState" class="hidden flex-col items-center gap-3">
+          <div class="w-14 h-14 rounded-full bg-red-100 text-red-500 flex items-center justify-center">
+            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+          </div>
+          <div>
+            <p class="font-bold text-slate-800 text-sm md:text-base">โหลดข้อมูลไม่สำเร็จ</p>
+            <p class="text-xs text-slate-500 mt-1">ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง</p>
+          </div>
+          <button onclick="fetchProjects()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs md:text-sm px-4 py-2 rounded-full shadow flex items-center gap-2 transition active:scale-95">
+            <i class="fa-solid fa-rotate-right"></i> ลองใหม่
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -121,26 +177,6 @@
     <span>ตำแหน่งของฉัน</span>
   </button>
 
-<!-- Data load countdown / connection status -->
-<div id="loadingOverlay" class="fixed inset-0 z-[20000] hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4" role="status" aria-live="polite" aria-label="สถานะการโหลดข้อมูล">
-  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
-    <div class="bg-slate-900 text-white px-5 py-4 flex items-center gap-3">
-      <div class="bg-amber-500 text-slate-900 h-10 w-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-map-location-dot"></i></div>
-      <div><h2 class="font-bold text-base">Construction Map Tracker</h2><p class="text-xs text-slate-300">เชื่อมต่อข้อมูลหน้างาน</p></div>
-    </div>
-    <div class="px-6 pt-7 pb-6 text-center">
-      <div id="loadingRing" class="load-ring mx-auto mb-5" aria-hidden="true">
-        <div class="load-ring-inner"><strong id="loadingSeconds" class="text-4xl leading-none text-slate-800">15</strong><span class="text-[11px] text-slate-500 mt-1">วินาที</span></div>
-      </div>
-      <h3 id="loadingTitle" class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูลโครงการ</h3>
-      <p id="loadingDescription" class="text-sm text-slate-500 mt-2 min-h-[40px]">กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...</p>
-      <div id="loadingBarTrack" class="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-4"><div id="loadingBar" class="load-running-bar"></div></div>
-      <p id="loadingHint" class="text-xs text-slate-400 mt-3">หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ</p>
-      <button type="button" id="retryLoadingBtn" onclick="fetchProjects()" class="hidden mt-5 w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3"><i class="fa-solid fa-rotate-right mr-1"></i> ลองโหลดข้อมูลอีกครั้ง</button>
-    </div>
-  </div>
-</div>
-
   <!-- ================= SCRIPT ================= -->
   <script>
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec";
@@ -148,13 +184,6 @@
   let projects = [];
   let map, markersGroup;
   let isSidebarOpen = true;
-
-  const LOAD_COUNTDOWN_SECONDS = 15;
-  const LOAD_TIMEOUT_MS = 30000;
-  let loadingInterval = null;
-  let activeFetchController = null;
-  let fetchSequence = 0;
-  const $ = id => document.getElementById(id);
 
   document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
@@ -210,92 +239,73 @@
     });
   }
 
-  // ดึงข้อมูลจาก Google Sheets พร้อมหน้าต่างนับถอยหลังและปุ่มลองใหม่
-  function setLoadingSeconds(remaining) {
-    $('loadingSeconds').textContent = remaining;
-    $('loadingRing').style.setProperty('--countdown-percent', (remaining / LOAD_COUNTDOWN_SECONDS * 100) + '%');
+  // ================= Loading UI =================
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.remove('hidden', 'fade-out');
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('errorState').classList.add('hidden');
+    document.getElementById('errorState').classList.remove('flex');
+
+    document.getElementById('projectCount').innerText = '...';
+
+    // Skeleton การ์ดใน Sidebar ระหว่างรอข้อมูล
+    const skeleton = `
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm animate-pulse">
+        <div class="flex gap-3">
+          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-200 shrink-0"></div>
+          <div class="flex-1 space-y-2 py-1">
+            <div class="h-3 w-16 bg-slate-200 rounded-full"></div>
+            <div class="h-4 w-3/4 bg-slate-200 rounded"></div>
+            <div class="h-3 w-full bg-slate-200 rounded"></div>
+            <div class="h-3 w-2/3 bg-slate-200 rounded"></div>
+          </div>
+        </div>
+        <div class="mt-3 pt-2 border-t border-slate-100">
+          <div class="h-7 w-full bg-slate-200 rounded-lg"></div>
+        </div>
+      </div>`;
+    document.getElementById('projectList').innerHTML = skeleton.repeat(4);
   }
 
-  function beginDataLoading() {
-    clearInterval(loadingInterval);
-    const started = Date.now();
-    setLoadingSeconds(LOAD_COUNTDOWN_SECONDS);
-    $('loadingTitle').textContent = 'กำลังโหลดข้อมูลโครงการ';
-    $('loadingDescription').textContent = 'กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...';
-    $('loadingHint').textContent = 'หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ';
-    $('retryLoadingBtn').classList.add('hidden');
-    $('loadingBarTrack').classList.remove('hidden');
-    $('loadingOverlay').classList.replace('hidden', 'flex');
-
-    loadingInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - started) / 1000);
-      const remaining = Math.max(0, LOAD_COUNTDOWN_SECONDS - elapsed);
-      setLoadingSeconds(remaining);
-      if (remaining === 0) {
-        $('loadingDescription').textContent = 'เซิร์ฟเวอร์ตอบกลับช้ากว่าปกติ ระบบยังรอข้อมูลอยู่...';
-        $('loadingHint').textContent = 'ตัวเลขเป็นเวลารอเบื้องต้น ไม่ใช่ความคืบหน้าการดาวน์โหลด';
-        clearInterval(loadingInterval);
-        loadingInterval = null;
-      }
-    }, 250);
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.add('fade-out');
+    setTimeout(() => overlay.classList.add('hidden'), 300);
   }
 
-  function endDataLoading() {
-    clearInterval(loadingInterval);
-    loadingInterval = null;
-    $('loadingOverlay').classList.replace('flex', 'hidden');
+  function showLoadError() {
+    document.getElementById('loadingState').classList.add('hidden');
+    const err = document.getElementById('errorState');
+    err.classList.remove('hidden');
+    err.classList.add('flex');
+
+    document.getElementById('projectCount').innerText = '0';
+    document.getElementById('projectList').innerHTML = `
+      <div class="text-center text-sm text-slate-500 py-10">
+        <i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl mb-2"></i>
+        <p>โหลดข้อมูลไม่สำเร็จ</p>
+      </div>`;
   }
 
-  function failDataLoading(message) {
-    clearInterval(loadingInterval);
-    loadingInterval = null;
-    $('loadingTitle').textContent = 'โหลดข้อมูลไม่สำเร็จ';
-    $('loadingDescription').textContent = message;
-    $('loadingHint').textContent = 'ตรวจสอบอินเทอร์เน็ตหรือการเข้าถึง Google Apps Script';
-    $('loadingBarTrack').classList.add('hidden');
-    $('retryLoadingBtn').classList.remove('hidden');
-    $('loadingRing').style.setProperty('--countdown-percent', '0%');
-    $('loadingSeconds').textContent = '!';
-  }
-
+  // ดึงข้อมูลจาก Google Sheets
   async function fetchProjects() {
-    // A new request supersedes an earlier one (for example after tapping Retry).
-    if (activeFetchController) activeFetchController.abort();
-    const controller = new AbortController();
-    activeFetchController = controller;
-    const seq = ++fetchSequence;
-    beginDataLoading();
-    let didTimeout = false;
-    const timeoutId = setTimeout(() => {
-      didTimeout = true;
-      controller.abort();
-    }, LOAD_TIMEOUT_MS);
-
+    showLoading();
     try {
-      const response = await fetch(WEB_APP_URL, { signal: controller.signal, cache: 'no-store' });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const json = await response.json();
-      if (json.status !== 'success' || !Array.isArray(json.data)) {
-        throw new Error(json.message || 'รูปแบบข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง');
+      const res = await fetch(WEB_APP_URL);
+      const json = await res.json();
+      if (json.status === 'success') {
+        projects = json.data;
+        renderUI(projects);
+        hideLoading();
+      } else {
+        showLoadError();
       }
-      if (seq !== fetchSequence) return false;
-      projects = json.data;
-      renderUI(projects);
-      endDataLoading();
-      return true;
     } catch (err) {
-      if (seq !== fetchSequence) return false;
-      console.error('โหลดข้อมูลโครงการไม่สำเร็จ:', err);
-      failDataLoading(didTimeout
-        ? 'รอการตอบกลับนานเกิน 30 วินาที กรุณาลองใหม่'
-        : 'ไม่สามารถเชื่อมต่อหรืออ่านข้อมูลจากเซิร์ฟเวอร์ได้');
-      return false;
-    } finally {
-      clearTimeout(timeoutId);
-      if (seq === fetchSequence) activeFetchController = null;
+      console.error("Error loading data:", err);
+      showLoadError();
     }
   }
-
 
   function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
