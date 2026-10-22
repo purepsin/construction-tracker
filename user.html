@@ -16,7 +16,10 @@
   body{font-family:'Noto Sans Thai',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
   ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
   .noscroll::-webkit-scrollbar{display:none}.noscroll{scrollbar-width:none}
-  .leaflet-container{font-family:inherit}
+  .leaflet-container{font-family:inherit;background:#0f172a}
+  .leaflet-control-layers{border-radius:12px!important;box-shadow:0 4px 12px rgba(0,0,0,.25)!important;border:0!important}
+  .leaflet-control-layers-toggle{width:40px!important;height:40px!important;border-radius:12px}
+  .leaflet-control-layers-expanded{padding:8px 12px!important;font-size:13px}
   .pin{width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
   .pin i{transform:rotate(45deg);color:#fff;font-size:14px}
   .pin.active{transform:rotate(-45deg) scale(1.25);box-shadow:0 0 0 4px rgba(245,158,11,.5),0 6px 10px rgba(0,0,0,.4)}
@@ -173,7 +176,17 @@ document.addEventListener('DOMContentLoaded', () => {
   if (CONTACT_URL) { const b = $('contactBtn'); b.href = CONTACT_URL; b.classList.remove('hidden'); b.classList.add('flex'); }
   map = L.map('map', { zoomControl:false }).setView(MAP_CENTER, MAP_ZOOM);
   L.control.zoom({ position:'topright' }).addTo(map);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+
+  /* ---- Google Maps tiles (ดาวเทียม) + ปุ่มสลับเลเยอร์ ---- */
+  const gOpts = { maxZoom: 20, maxNativeZoom: 20, subdomains: ['mt0','mt1','mt2','mt3'], attribution: '© Google' };
+  const baseMaps = {
+    'ดาวเทียม + ชื่อสถานที่': L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', gOpts),
+    'ดาวเทียมล้วน':          L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', gOpts),
+    'แผนที่ถนน':             L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', gOpts)
+  };
+  baseMaps['ดาวเทียม + ชื่อสถานที่'].addTo(map);
+  L.control.layers(baseMaps, null, { position:'topright', collapsed:true }).addTo(map);
+
   layer = L.layerGroup().addTo(map);
   userLayer = L.layerGroup().addTo(map);
   map.on('click', () => { if (selectedId) closeDetail(); else if (isMobile()) setPanel(false); });
