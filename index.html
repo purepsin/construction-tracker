@@ -27,6 +27,15 @@
   }
   .lamp{width:14px;height:14px;border-radius:50%;background:#e2e8f0;border:1px solid #cbd5e1}
   .lamp.on{background:#22c55e;border-color:#16a34a;box-shadow:0 0 6px #4ade80}
+  /* Data-loading countdown: ring tracks waiting time; the moving bar is not a percentage. */
+  .load-ring{--countdown-percent:100%;width:116px;height:116px;border-radius:50%;padding:7px;
+    background:conic-gradient(#f59e0b var(--countdown-percent),#e2e8f0 0);transition:background .15s}
+  .load-ring-inner{width:100%;height:100%;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;flex-direction:column;background:#fff}
+  .load-running-bar{width:34%;height:100%;border-radius:999px;background:#f59e0b;
+    animation:load-travel 1.3s ease-in-out infinite alternate}
+  @keyframes load-travel{from{transform:translateX(0)}to{transform:translateX(194%)}}
+  @media(prefers-reduced-motion:reduce){.load-running-bar{animation:none;width:100%;opacity:.7}}
 </style>
 </head>
 <body class="bg-slate-100 flex flex-col">
@@ -68,6 +77,26 @@
   <button id="navMap" onclick="setView('map')" class="py-2.5 text-xs font-semibold flex flex-col items-center gap-0.5"><i class="fa-solid fa-map text-lg"></i>แผนที่</button>
   <button id="navList" onclick="setView('list')" class="py-2.5 text-xs font-semibold flex flex-col items-center gap-0.5"><i class="fa-solid fa-list-ul text-lg"></i>รายการ</button>
 </nav>
+
+<!-- Data load countdown / connection status -->
+<div id="loadingOverlay" class="fixed inset-0 z-[20000] hidden items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4" role="status" aria-live="polite" aria-label="สถานะการโหลดข้อมูล">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+    <div class="bg-slate-900 text-white px-5 py-4 flex items-center gap-3">
+      <div class="bg-amber-500 text-slate-900 h-10 w-10 rounded-xl flex items-center justify-center"><i class="fa-solid fa-map-location-dot"></i></div>
+      <div><h2 class="font-bold text-base">Construction Map Tracker</h2><p class="text-xs text-slate-300">เชื่อมต่อข้อมูลหน้างาน</p></div>
+    </div>
+    <div class="px-6 pt-7 pb-6 text-center">
+      <div id="loadingRing" class="load-ring mx-auto mb-5" aria-hidden="true">
+        <div class="load-ring-inner"><strong id="loadingSeconds" class="text-4xl leading-none text-slate-800">15</strong><span class="text-[11px] text-slate-500 mt-1">วินาที</span></div>
+      </div>
+      <h3 id="loadingTitle" class="text-lg font-bold text-slate-800">กำลังโหลดข้อมูลโครงการ</h3>
+      <p id="loadingDescription" class="text-sm text-slate-500 mt-2 min-h-[40px]">กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...</p>
+      <div id="loadingBarTrack" class="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-4"><div id="loadingBar" class="load-running-bar"></div></div>
+      <p id="loadingHint" class="text-xs text-slate-400 mt-3">หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ</p>
+      <button type="button" id="retryLoadingBtn" onclick="fetchProjects()" class="hidden mt-5 w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3"><i class="fa-solid fa-rotate-right mr-1"></i> ลองโหลดข้อมูลอีกครั้ง</button>
+    </div>
+  </div>
+</div>
 
 <!-- Add/Edit modal -->
 <div id="adminModal" class="fixed inset-0 bg-slate-900/60 z-[9999] hidden items-end md:items-center justify-center md:p-4">
@@ -154,6 +183,9 @@ const FALLBACK_IMG = "https://images.unsplash.com/photo-1503387762-592deb58ef4e?
 const STATUSES = [["ALL","ทั้งหมด"],["เซ็นสัญญาแล้ว","เซ็นสัญญาแล้ว"],["กำลังก่อสร้าง","กำลังสร้าง"],["สร้างเสร็จแล้ว","เสร็จแล้ว"]];
 
 let projects = [], map, markersGroup, selectedFile = null, editingId = null, existingImageUrl = "", curStatus = "ALL";
+const LOAD_COUNTDOWN_SECONDS = 15;
+const LOAD_TIMEOUT_MS = 30000;
+let loadingInterval = null, activeFetchController = null, fetchSequence = 0;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $ = id => document.getElementById(id);
@@ -220,11 +252,89 @@ function lamps(p) {
   return `<div class="flex items-center gap-1.5" title="งวดที่ ${n}/4">${dots}<span class="text-[11px] text-slate-500 font-semibold ml-1">งวด ${n}/4</span></div>`;
 }
 
+function setLoadingSeconds(remaining) {
+  $('loadingSeconds').textContent = remaining;
+  $('loadingRing').style.setProperty('--countdown-percent', (remaining / LOAD_COUNTDOWN_SECONDS * 100) + '%');
+}
+
+function beginDataLoading() {
+  clearInterval(loadingInterval);
+  const started = Date.now();
+  setLoadingSeconds(LOAD_COUNTDOWN_SECONDS);
+  $('loadingTitle').textContent = 'กำลังโหลดข้อมูลโครงการ';
+  $('loadingDescription').textContent = 'กำลังดึงข้อมูลล่าสุดจากเซิร์ฟเวอร์...';
+  $('loadingHint').textContent = 'หน้าต่างจะปิดอัตโนมัติเมื่อโหลดเสร็จ';
+  $('retryLoadingBtn').classList.add('hidden');
+  $('loadingBarTrack').classList.remove('hidden');
+  $('loadingOverlay').classList.replace('hidden', 'flex');
+
+  loadingInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - started) / 1000);
+    const remaining = Math.max(0, LOAD_COUNTDOWN_SECONDS - elapsed);
+    setLoadingSeconds(remaining);
+    if (remaining === 0) {
+      $('loadingDescription').textContent = 'เซิร์ฟเวอร์ตอบกลับช้ากว่าปกติ ระบบยังรอข้อมูลอยู่...';
+      $('loadingHint').textContent = 'ตัวเลขเป็นเวลารอเบื้องต้น ไม่ใช่ความคืบหน้าการดาวน์โหลด';
+      clearInterval(loadingInterval);
+      loadingInterval = null;
+    }
+  }, 250);
+}
+
+function endDataLoading() {
+  clearInterval(loadingInterval);
+  loadingInterval = null;
+  $('loadingOverlay').classList.replace('flex', 'hidden');
+}
+
+function failDataLoading(message) {
+  clearInterval(loadingInterval);
+  loadingInterval = null;
+  $('loadingTitle').textContent = 'โหลดข้อมูลไม่สำเร็จ';
+  $('loadingDescription').textContent = message;
+  $('loadingHint').textContent = 'ตรวจสอบอินเทอร์เน็ตหรือการเข้าถึง Google Apps Script';
+  $('loadingBarTrack').classList.add('hidden');
+  $('retryLoadingBtn').classList.remove('hidden');
+  $('loadingRing').style.setProperty('--countdown-percent', '0%');
+  $('loadingSeconds').textContent = '!';
+}
+
 async function fetchProjects() {
+  // A new request supersedes an earlier one (for example after tapping Retry).
+  if (activeFetchController) activeFetchController.abort();
+  const controller = new AbortController();
+  activeFetchController = controller;
+  const seq = ++fetchSequence;
+  beginDataLoading();
+  let didTimeout = false;
+  const timeoutId = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, LOAD_TIMEOUT_MS);
+
   try {
-    const json = await (await fetch(WEB_APP_URL)).json();
-    if (json.status === 'success') { projects = json.data; applyFilter(); }
-  } catch (err) { console.error(err); }
+    const response = await fetch(WEB_APP_URL, { signal: controller.signal, cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const json = await response.json();
+    if (json.status !== 'success' || !Array.isArray(json.data)) {
+      throw new Error(json.message || 'รูปแบบข้อมูลจากเซิร์ฟเวอร์ไม่ถูกต้อง');
+    }
+    if (seq !== fetchSequence) return false;
+    projects = json.data;
+    applyFilter();
+    endDataLoading();
+    return true;
+  } catch (err) {
+    if (seq !== fetchSequence) return false;
+    console.error('โหลดข้อมูลโครงการไม่สำเร็จ:', err);
+    failDataLoading(didTimeout
+      ? 'รอการตอบกลับนานเกิน 30 วินาที กรุณาลองใหม่'
+      : 'ไม่สามารถเชื่อมต่อหรืออ่านข้อมูลจากเซิร์ฟเวอร์ได้');
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+    if (seq === fetchSequence) activeFetchController = null;
+  }
 }
 
 function applyFilter() {
