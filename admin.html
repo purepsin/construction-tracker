@@ -53,11 +53,13 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:1fr;grid-template-ro
 .chip em{font-style:normal;font-size:12px;opacity:.75}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
 .list{grid-area:view;display:none;overflow-y:auto;padding:12px 12px calc(150px + var(--sb));-webkit-overflow-scrolling:touch;background:var(--bg);z-index:5}
-body.list .list{display:block}
+body.v-list .list{display:block}
 .mapwrap{grid-area:view;position:relative;isolation:isolate;min-height:0}
 #map{position:absolute;inset:0;background:#dfe9e7}
-.loc{position:absolute;right:14px;bottom:84px;width:52px;height:52px;border-radius:50%;background:#fff;color:var(--pri);font-size:20px;box-shadow:0 3px 12px #0d2b2e40;z-index:500}
-.fab{position:fixed;right:14px;bottom:calc(56px + var(--sb) + 14px);width:56px;height:56px;border-radius:50%;background:var(--pri);color:#fff;font-size:22px;box-shadow:0 6px 18px #0f766e80;z-index:600}
+.fabs{position:fixed;right:14px;bottom:calc(56px + var(--sb) + 14px);display:flex;flex-direction:column;align-items:center;gap:12px;z-index:600}
+.fb{width:48px;height:48px;border-radius:50%;background:#fff;color:var(--pri);font-size:19px;box-shadow:0 3px 12px #0d2b2e55}
+.fab{width:58px;height:58px;border-radius:50%;background:var(--pri);color:#fff;font-size:22px;box-shadow:0 6px 18px #0f766e80}
+body.v-list .fb{display:none}
 .fab:active{background:var(--pri2)}
 .tabs{display:grid;grid-template-columns:1fr 1fr;background:#fff;border-top:1px solid var(--line);padding-bottom:var(--sb);flex-shrink:0;z-index:700}
 .tabs button{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:500;color:var(--mut)}
@@ -151,7 +153,7 @@ textarea.inp{resize:none}
   .mapwrap{grid-area:map}
   .tabs,.fab{display:none}
   .desk{display:inline-flex}
-  .loc{bottom:22px}
+  .fabs{bottom:22px;right:18px}
   .ov{align-items:center}
   .sheet{border-radius:24px;max-height:90dvh}
 }
@@ -179,7 +181,6 @@ textarea.inp{resize:none}
   <section id="list" class="list"><div id="cards"></div><div class="count" id="count"></div></section>
   <section class="mapwrap">
     <div id="map"></div>
-    <button class="loc" onclick="locateUser()" aria-label="ตำแหน่งของฉัน"><i class="fa-solid fa-crosshairs"></i></button>
   </section>
 </main>
 
@@ -187,7 +188,11 @@ textarea.inp{resize:none}
   <button id="tMap" onclick="setView('map')"><i class="fa-solid fa-map-location-dot"></i>แผนที่</button>
   <button id="tList" onclick="setView('list')"><i class="fa-solid fa-list-ul"></i>รายการ</button>
 </nav>
-<button class="fab" onclick="openForm()" aria-label="เพิ่มหน้างาน"><i class="fa-solid fa-plus"></i></button>
+<div class="fabs">
+  <button class="fb" onclick="cycleBase()" aria-label="เปลี่ยนรูปแบบแผนที่"><i class="fa-solid fa-layer-group"></i></button>
+  <button class="fb" onclick="locateUser()" aria-label="ตำแหน่งของฉัน"><i class="fa-solid fa-crosshairs"></i></button>
+  <button class="fab" onclick="openForm()" aria-label="เพิ่มหน้างาน"><i class="fa-solid fa-plus"></i></button>
+</div>
 
 <!-- detail sheet -->
 <div id="dOv" class="ov" onclick="if(event.target===this)closeOv('dOv')">
@@ -306,9 +311,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ---------- map ---------- */
+const BASES = [
+  ['ดาวเทียม (Google)', () => L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], maxZoom: 20, attribution: '© Google' })],
+  ['ดาวเทียม (Esri)', () => L.layerGroup([
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 18, attribution: '© Esri' }),
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20, maxNativeZoom: 18 })])],
+  ['แผนที่ถนน', () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20, maxNativeZoom: 19, attribution: '© OpenStreetMap' })]
+];
+let baseIdx = 0, baseLayer;
+function setBase(i) {
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseIdx = i; baseLayer = BASES[i][1]().addTo(map);
+  try { localStorage.setItem('base', i); } catch (e) {}
+}
+function cycleBase() { setBase((baseIdx + 1) % BASES.length); toast('แผนที่: ' + BASES[baseIdx][0]); }
 function initMap() {
-  map = L.map('map', { zoomControl: false }).setView([14.9733, 102.0831], 9);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  map = L.map('map', { zoomControl: false, maxZoom: 20 }).setView([14.9733, 102.0831], 9);
+  let i = 0; try { i = parseInt(localStorage.getItem('base')) || 0; } catch (e) {}
+  setBase(BASES[i] ? i : 0);
   layer = L.layerGroup().addTo(map);
   userLayer = L.layerGroup().addTo(map);
 }
@@ -335,7 +355,7 @@ function locateUser() {
 
 /* ---------- views / filter ---------- */
 function setView(v) {
-  document.body.classList.toggle('list', v === 'list');
+  document.body.classList.toggle('v-list', v === 'list');
   $('tMap').classList.toggle('on', v === 'map');
   $('tList').classList.toggle('on', v === 'list');
   setTimeout(() => map && map.invalidateSize(), 80);
