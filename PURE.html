@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d2b2e">
+<title>งานของคุณเพียว | Construction Map Tracker</title>
+<link rel="icon" type="image/webp" href="https://i.ibb.co/jvVJd7xY/762219.webp">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--ink:#0d2b2e;--acc:#0f766e;--acc2:#0b5d57;--bg:#eef3f2;--line:#dbe3e6;--mut:#5f7075;--red:#d64550;--amb:#e8890c;--grn:#1f9d57;--blu:#2b8be0;--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:'Kanit',system-ui,sans-serif;color:var(--ink);background:var(--bg);font-size:15px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--acc) 55%,#fff);outline-offset:2px}
+.app{display:flex;min-height:100dvh}
+/* sidebar (desktop) */
+.side{display:none;width:240px;background:var(--ink);color:#fff;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100dvh;flex-shrink:0}
+.brand{display:flex;gap:10px;align-items:center;padding:0 6px 18px}
+.brand img{width:40px;height:40px;border-radius:11px;background:#fff;padding:3px;object-fit:contain}
+.brand b{display:block;font-size:15px;line-height:1.2}.brand small{color:#ffffff99;font-size:12px}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav button{display:flex;align-items:center;gap:12px;height:46px;padding:0 14px;border-radius:12px;color:#ffffffb8;font-weight:500;text-align:left}
+.nav button i{width:20px;text-align:center}
+.nav button.on{background:var(--acc);color:#fff}
+.nav button .n{margin-left:auto;font-size:12px;background:#ffffff26;border-radius:999px;padding:1px 9px}
+.side .me{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 8px 0;border-top:1px solid #ffffff22}
+.av{width:42px;height:42px;border-radius:50%;background:var(--acc);display:grid;place-items:center;font-weight:600;font-size:17px;flex-shrink:0;color:#fff}
+/* content */
+.mc{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:10px;padding:calc(12px + var(--st)) 16px 12px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top .av{width:38px;height:38px;font-size:15px}
+.top h1{flex:1;min-width:0;margin:0;font-size:17px;font-weight:600;line-height:1.2}
+.top h1 small{display:block;font-weight:400;font-size:12px;color:var(--mut)}
+.ib{width:44px;height:44px;border-radius:12px;background:color-mix(in srgb,var(--acc) 10%,#fff);color:var(--acc);font-size:16px}
+.btn{min-height:46px;padding:0 18px;border-radius:13px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.pri{background:var(--acc);color:#fff}.pri:active{background:var(--acc2)}
+.gh{background:color-mix(in srgb,var(--acc) 10%,#fff);color:var(--ink)}
+.dng{background:#fdecee;color:var(--red)}
+.sm{min-height:40px;padding:0 14px;font-size:14px}
+.dsk{display:none}
+main{padding:14px 14px calc(96px + var(--sb));width:100%;max-width:1180px;margin:0 auto}
+.pg{display:none}.pg.on{display:block}
+.hello{margin:4px 2px 14px}.hello h2{margin:0;font-size:22px;font-weight:600}.hello p{margin:2px 0 0;color:var(--mut);font-size:14px}
+/* kpi */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;text-align:left;min-width:0}
+.kpi .v{font-size:28px;font-weight:600;line-height:1.1}.kpi .l{font-size:13px;color:var(--mut);margin-top:2px}
+.kpi i{float:right;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:15px}
+.kpi.alert{background:var(--ink);color:#fff;border-color:var(--ink)}.kpi.alert .l{color:#ffffffb0}
+.cols{display:grid;gap:12px;margin-top:12px}
+.pn{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;min-width:0}
+.pn h3{margin:0 0 10px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.pn h3 a{margin-left:auto;font-size:13px;color:var(--acc);font-weight:500;cursor:pointer}
+/* donut */
+.dn{display:flex;align-items:center;gap:18px}
+.ring{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.ring div{width:84px;height:84px;border-radius:50%;background:#fff;display:grid;place-items:center;text-align:center;line-height:1.1}
+.ring b{font-size:24px;display:block}.ring small{font-size:12px;color:var(--mut)}
+.lg{flex:1;display:grid;gap:8px;min-width:0}.lg div{display:flex;align-items:center;gap:8px;font-size:14px}
+.lg i{width:10px;height:10px;border-radius:50%;flex-shrink:0}.lg b{margin-left:auto}
+.stp{display:grid;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.stp .r{display:flex;align-items:center;gap:10px;font-size:13px}
+.stp .r>span:first-child{width:46px;color:var(--mut)}.stp .bar{flex:1;height:10px;background:#e8eef0;border-radius:5px;overflow:hidden}
+.stp .bar i{display:block;height:100%;background:var(--amb);border-radius:5px}.stp .r b{width:20px;text-align:right}
+/* tasks */
+.tk{display:flex;gap:12px;align-items:flex-start;padding:11px 4px 11px 10px;border-bottom:1px solid var(--line);border-left:4px solid var(--line);margin-bottom:0}
+.tk:last-child{border-bottom:0}
+.tk.p3{border-left-color:var(--red)}.tk.p2{border-left-color:var(--amb)}
+.ck{width:30px;height:30px;border-radius:9px;border:2px solid #b5c3c7;display:grid;place-items:center;flex-shrink:0;color:transparent;background:#fff;margin-top:2px}
+.tk.done .ck{background:var(--grn);border-color:var(--grn);color:#fff}
+.tk.done .tt{text-decoration:line-through;color:var(--mut)}
+.tb{flex:1;min-width:0;cursor:pointer}.tt{font-weight:500;line-height:1.3;word-break:break-word}
+.tm{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--mut);margin-top:3px}
+.tm .od{color:var(--red);font-weight:600}.tm .td{color:var(--amb);font-weight:600}
+.emp{text-align:center;color:var(--mut);padding:26px 10px;font-size:14px}.emp i{display:block;font-size:30px;color:#b9c7cb;margin-bottom:8px}
+/* sites */
+.tools{display:grid;gap:10px;margin-bottom:12px}
+.sr{position:relative}.sr i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut)}
+.sr input,.inp{width:100%;min-height:48px;border:1.5px solid var(--line);border-radius:13px;padding:10px 14px;font-size:16px;background:#fff}
+.sr input{padding-left:40px}
+.inp:focus,.sr input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chip{flex:0 0 auto;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:14px;font-weight:500;color:var(--mut);display:flex;align-items:center;gap:7px}
+.chip em{font-style:normal;font-weight:600}.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.grid{display:grid;gap:10px}
+.cd{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px;min-width:0}
+.cd .h{display:flex;gap:10px;align-items:flex-start}.cd h4{margin:4px 0 2px;font-size:16px;font-weight:600;line-height:1.25;word-break:break-word}
+.cd .ad{font-size:13px;color:var(--mut)}
+.bdg{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.lad{display:flex;gap:4px;align-items:center;margin-top:10px}.lad span{flex:1;height:8px;border-radius:4px;background:#e3eaec}.lad span.on{background:var(--amb)}.lad small{font-size:12px;color:var(--mut);margin-left:6px;white-space:nowrap}
+.acts{display:flex;gap:8px;margin-top:11px}.acts .btn{flex:1;min-width:0}
+.pv{margin-left:auto;font-weight:600;color:var(--acc);font-size:14px;white-space:nowrap}
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:var(--sb);z-index:30}
+.tabs button{height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:500;color:var(--mut)}
+.tabs button i{font-size:19px}.tabs button.on{color:var(--acc)}
+.fab{position:fixed;right:16px;bottom:calc(74px + var(--sb));width:58px;height:58px;border-radius:50%;background:var(--acc);color:#fff;font-size:22px;box-shadow:0 6px 18px color-mix(in srgb,var(--acc) 50%,transparent);z-index:31}
+/* sheets */
+.ov{position:fixed;inset:0;background:#0d1a1e8c;z-index:100;display:none;align-items:flex-end;justify-content:center}.ov.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:520px;max-height:94dvh;border-radius:24px 24px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.5}}
+@media(prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sh{display:flex;align-items:center;padding:14px 16px 6px}.sh h3{margin:0;flex:1;font-size:18px}
+.x{width:44px;height:44px;border-radius:50%;background:var(--bg);color:var(--mut)}
+.sb{overflow-y:auto;padding:4px 16px 14px}
+.sf{display:flex;gap:10px;padding:10px 16px calc(12px + var(--sb));border-top:1px solid var(--line)}.sf .pri{flex:1}
+.lbl{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+.seg{display:flex;background:#e8eef0;border-radius:13px;padding:4px;gap:4px}
+.seg button{flex:1;min-height:42px;border-radius:10px;font-size:14px;font-weight:500;color:var(--mut)}.seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 4px #0002}
+.dl{margin:12px 0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.dl div{display:flex;gap:10px;padding:10px 13px;font-size:14px;border-bottom:1px solid var(--line)}.dl div:last-child{border:0}
+.dl i{width:18px;color:var(--acc);margin-top:3px;text-align:center}.dl span{flex:1;min-width:0;word-break:break-word}
+.toast{position:fixed;left:50%;top:calc(14px + var(--st));transform:translate(-50%,-90px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:14px;z-index:300;transition:transform .25s;max-width:90vw;text-align:center}
+.toast.on{transform:translate(-50%,0)}.toast.err{background:var(--red)}
+.ld{padding:30px;text-align:center;color:var(--mut)}
+.er{background:#fdecee;color:var(--red);border-radius:14px;padding:12px 14px;margin-bottom:12px;display:none;align-items:center;gap:10px;font-size:14px}.er.on{display:flex}.er button{margin-left:auto;font-weight:600;color:var(--red);min-height:40px}
+/* wide */
+@media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.tools{grid-template-columns:minmax(0,320px) 1fr;align-items:center}}
+@media(min-width:960px){
+  .side{display:flex}.tabs,.fab,.top .av{display:none}.dsk{display:inline-flex}
+  .top{padding:14px 28px}main{padding:22px 28px 40px}
+  .cols{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.cols .span{grid-column:1/-1}
+  .ov{align-items:center}.sheet{border-radius:24px;max-height:90dvh}
+  .grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><img src="https://i.ibb.co/jvVJd7xY/762219.webp" alt=""><div><b>Construction Map Tracker</b><small>จัดการงาน</small></div></div>
+    <nav class="nav">
+      <button data-t="dash"><i class="fa-solid fa-gauge-high"></i>แดชบอร์ด</button>
+      <button data-t="sites"><i class="fa-solid fa-helmet-safety"></i>หน้างานของฉัน<span class="n" id="nS">0</span></button>
+      <button data-t="tasks"><i class="fa-solid fa-list-check"></i>งานที่ต้องทำ<span class="n" id="nT">0</span></button>
+    </nav>
+    <div class="me"><div class="av">เพียว</div><div><b>คุณเพียว</b><br><small style="color:#ffffff99">ผู้ดูแลหน้างาน</small></div></div>
+  </aside>
+  <div class="mc">
+    <header class="top">
+      <div class="av">เพียว</div>
+      <h1 id="ttl">แดชบอร์ด<small>คุณเพียว</small></h1>
+      <button class="ib" onclick="load()" aria-label="โหลดข้อมูลใหม่"><i class="fa-solid fa-rotate"></i></button>
+      <button class="btn pri sm dsk" onclick="openT()"><i class="fa-solid fa-plus"></i> เพิ่มงาน</button>
+    </header>
+    <main>
+      <div id="er" class="er"><i class="fa-solid fa-triangle-exclamation"></i><span>โหลดข้อมูลหน้างานไม่ได้ ตรวจสอบอินเทอร์เน็ต</span><button onclick="load()">ลองอีกครั้ง</button></div>
+      <section id="p-dash" class="pg"></section>
+      <section id="p-sites" class="pg">
+        <div class="tools"><div class="sr"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="ค้นหาชื่อ ที่อยู่ เบอร์โทร" oninput="q=this.value.toLowerCase();rSites()"></div><div id="chs" class="chips"></div></div>
+        <div id="sites" class="grid"></div>
+      </section>
+      <section id="p-tasks" class="pg">
+        <div class="tools"><div></div><div id="tchs" class="chips"></div></div>
+        <div class="pn" id="tlist" style="padding:6px 12px"></div>
+      </section>
+    </main>
+  </div>
+</div>
+<nav class="tabs">
+  <button data-t="dash"><i class="fa-solid fa-gauge-high"></i>แดชบอร์ด</button>
+  <button data-t="sites"><i class="fa-solid fa-helmet-safety"></i>หน้างาน</button>
+  <button data-t="tasks"><i class="fa-solid fa-list-check"></i>งานที่ต้องทำ</button>
+</nav>
+<button class="fab" onclick="openT()" aria-label="เพิ่มงาน"><i class="fa-solid fa-plus"></i></button>
+
+<div id="sOv" class="ov" onclick="if(event.target===this)cl('sOv')"><div class="sheet"><div class="sh"><h3>รายละเอียดหน้างาน</h3><button class="x" onclick="cl('sOv')" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button></div><div id="sBody" class="sb"></div></div></div>
+
+<div id="tOv" class="ov" onclick="if(event.target===this)cl('tOv')"><div class="sheet">
+  <div class="sh"><h3 id="tH"></h3><button class="x" onclick="cl('tOv')" aria-label="ปิด"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="sb">
+    <label class="lbl" for="fT" style="margin-top:4px">งานที่ต้องทำ</label><input id="fT" class="inp" placeholder="เช่น ตรวจงานเทพื้น บ้านคุณสมชาย" autocomplete="off">
+    <label class="lbl" for="fD">กำหนดเสร็จ</label><input id="fD" class="inp" type="date">
+    <span class="lbl">ความสำคัญ</span><div class="seg" id="fP"><button type="button" data-v="1">ปกติ</button><button type="button" data-v="2">สำคัญ</button><button type="button" data-v="3">ด่วน</button></div>
+    <label class="lbl" for="fJ">หน้างานที่เกี่ยวข้อง</label><select id="fJ" class="inp"></select>
+    <label class="lbl" for="fN">บันทึกเพิ่มเติม</label><textarea id="fN" class="inp" rows="3" style="resize:none"></textarea>
+  </div>
+  <div class="sf"><button class="btn dng" id="tDel" onclick="delT()">ลบ</button><button class="btn pri" onclick="saveT()">บันทึกงาน</button></div>
+</div></div>
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+const NAME='เพียว',API="https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec",SK='tasks_'+'PURE';
+const ST=[['เซ็นสัญญาแล้ว','เซ็นสัญญา','#2b8be0'],['กำลังก่อสร้าง','กำลังสร้าง','#e8890c'],['สร้างเสร็จแล้ว','เสร็จแล้ว','#1f9d57']];
+const TTL={dash:'แดชบอร์ด',sites:'หน้างานของฉัน',tasks:'งานที่ต้องทำ'};
+let P=[],T=ld(),tab='dash',sf='ALL',tf='open',q='',eid=null,loaded=false;
+const $=i=>document.getElementById(i);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function ld(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
+function sv(){try{localStorage.setItem(SK,JSON.stringify(T))}catch(e){}}
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date());
+const fd=s=>new Date(s+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+const money=v=>v===''||v==null||isNaN(v)?'-':Number(v).toLocaleString('th-TH')+' บาท';
+const mil=v=>v>=1e6?(v/1e6).toLocaleString('th-TH',{maximumFractionDigits:2})+' ล้าน':v.toLocaleString('th-TH');
+const isB=s=>s==='กำลังก่อสร้าง';
+const col=s=>(ST.find(x=>x[0]===s)||[0,0,'#1f9d57'])[2];
+const sh=s=>(ST.find(x=>x[0]===s)||[0,s])[1];
+const fp=id=>P.find(x=>String(x.id)===String(id));
+let tt;function toast(m,e){const t=$('toast');t.textContent=m;t.className='toast on'+(e?' err':'');clearTimeout(tt);tt=setTimeout(()=>t.className='toast',2500)}
+const op=i=>$(i).classList.add('on'),cl=i=>$(i).classList.remove('on');
+
+function go(t){tab=t;document.querySelectorAll('.pg').forEach(e=>e.classList.toggle('on',e.id==='p-'+t));
+ document.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+ $('ttl').innerHTML=TTL[t]+'<small>คุณ'+NAME+'</small>';scrollTo(0,0);rAll()}
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>go(b.dataset.t));
+
+/* ---- data ---- */
+async function load(){
+ $('er').classList.remove('on');if(!loaded)$('p-dash').innerHTML='<div class="ld"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดหน้างาน...</div>';
+ try{const r=await fetch(API,{cache:'no-store'});const j=await r.json();if(j.status!=='success'||!Array.isArray(j.data))throw 0;
+  P=j.data.filter(p=>p.admin===NAME);loaded=true}
+ catch(e){$('er').classList.add('on')}
+ rAll()}
+const post=b=>fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json());
+async function adv(id){
+ const p=fp(id);if(!p)return;let s=p.status,n=parseInt(p.step)||0,m;
+ if(s==='เซ็นสัญญาแล้ว'){s='กำลังก่อสร้าง';n=1;m='เริ่มก่อสร้าง งวด 1'}
+ else if(isB(s)){if(n<4){n++;m='เลื่อนเป็นงวด '+n}else{s='สร้างเสร็จแล้ว';n='';m='ปิดงาน (สร้างเสร็จแล้ว)'}}else return;
+ if(!confirm(p.name+'\n'+m+' ใช่หรือไม่?'))return;
+ try{const r=await post({...p,action:'update',status:s,step:n===''?'':String(n)});if(r.status!=='success')throw new Error(r.message);
+  cl('sOv');await load();toast('อัปเดตแล้ว')}catch(e){toast('อัปเดตไม่สำเร็จ: '+(e.message||'เชื่อมต่อไม่ได้'),1)}}
+
+/* ---- render ---- */
+function openT_(){return T.filter(t=>!t.done)}
+function late(t){return !t.done&&t.due&&t.due<today()}
+function dueNow(){return T.filter(t=>!t.done&&t.due&&t.due<=today()).length}
+function rAll(){$('nS').textContent=P.length;$('nT').textContent=openT_().length;rDash();rSites();rTasks()}
+function ladder(p){if(!isB(p.status))return'';const n=parseInt(p.step)||0;return`<div class="lad">${[1,2,3,4].map(i=>`<span class="${i<=n?'on':''}"></span>`).join('')}<small>งวด ${n}/4</small></div>`}
+function badge(p){const c=col(p.status);return`<span class="bdg" style="background:${c}22;color:color-mix(in srgb,${c} 75%,#000)">${esc(sh(p.status))}</span>`}
+function advLabel(p){return p.status==='เซ็นสัญญาแล้ว'?'เริ่มก่อสร้าง':isB(p.status)?((parseInt(p.step)||0)<4?'งวดถัดไป':'ปิดงาน'):''}
+function taskHTML(t){
+ const pj=t.pid&&fp(t.pid),dc=late(t)?'od':t.due===today()?'td':'';
+ return`<div class="tk p${t.pr||1} ${t.done?'done':''}"><button class="ck" onclick="tog('${t.id}')" aria-label="ทำเสร็จ"><i class="fa-solid fa-check"></i></button>
+ <div class="tb" onclick="openT('${t.id}')"><div class="tt">${esc(t.title)}</div><div class="tm">${t.due?`<span class="${dc}"><i class="fa-regular fa-calendar"></i> ${late(t)?'เกินกำหนด ':t.due===today()?'วันนี้ ':''}${fd(t.due)}</span>`:''}${pj?`<span><i class="fa-solid fa-location-dot"></i> ${esc(pj.name)}</span>`:''}${t.pr==3?'<span style="color:var(--red)">ด่วน</span>':''}</div></div></div>`}
+function sortT(a){return a.slice().sort((x,y)=>(x.due||'9')>(y.due||'9')?1:-1||0)}
+
+function rDash(){
+ if(!loaded&&!P.length)return;
+ const h=new Date().getHours(),g=h<12?'สวัสดีตอนเช้า':h<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
+ const cnt=s=>P.filter(p=>p.status===s).length,b=P.filter(p=>isB(p.status));
+ const val=P.reduce((a,p)=>a+(Number(p.price)||0),0),dn=dueNow(),o=sortT(openT_()).slice(0,6);
+ let a=0;const seg=ST.map(([v,,c])=>{const n=cnt(v),s=a;a+=P.length?n/P.length*100:0;return`${c} ${s}% ${a}%`}).join(',');
+ const step=[1,2,3,4].map(i=>({i,n:b.filter(p=>(parseInt(p.step)||0)===i).length}));
+ $('p-dash').innerHTML=`
+ <div class="hello"><h2>${g} คุณ${NAME}</h2><p>${dn?`วันนี้มี ${dn} งานที่ต้องจัดการ`:'วันนี้ไม่มีงานค้าง'} · ดูแล ${P.length} หน้างาน</p></div>
+ <div class="kpis">
+  <button class="kpi ${dn?'alert':''}" onclick="tf='due';go('tasks')"><i class="fa-solid fa-bell" style="background:${dn?'#ffffff26':'#fdecee'};color:${dn?'#fff':'var(--red)'}"></i><div class="v">${dn}</div><div class="l">ถึงกำหนด / เกินกำหนด</div></button>
+  <button class="kpi" onclick="sf='กำลังก่อสร้าง';go('sites')"><i class="fa-solid fa-hammer" style="background:#fdf1de;color:var(--amb)"></i><div class="v">${b.length}</div><div class="l">กำลังก่อสร้าง</div></button>
+  <button class="kpi" onclick="sf='เซ็นสัญญาแล้ว';go('sites')"><i class="fa-solid fa-file-signature" style="background:#e3f0fb;color:var(--blu)"></i><div class="v">${cnt('เซ็นสัญญาแล้ว')}</div><div class="l">รอเริ่มงาน (เซ็นสัญญา)</div></button>
+  <div class="kpi"><i class="fa-solid fa-coins" style="background:#e3f5ea;color:var(--grn)"></i><div class="v">${mil(val)}</div><div class="l">มูลค่างานรวม (บาท)</div></div>
+ </div>
+ <div class="cols">
+  <div class="pn"><h3><i class="fa-solid fa-list-check" style="color:var(--acc)"></i>งานที่ต้องทำ<a onclick="tf='open';go('tasks')">ดูทั้งหมด</a></h3>
+   ${o.length?o.map(taskHTML).join(''):'<div class="emp"><i class="fa-regular fa-circle-check"></i>ไม่มีงานค้าง กด + เพื่อเพิ่มงานใหม่</div>'}</div>
+  <div class="pn"><h3><i class="fa-solid fa-chart-pie" style="color:var(--acc)"></i>สถานะหน้างาน</h3>
+   <div class="dn"><div class="ring" style="background:${P.length?`conic-gradient(${seg})`:'#e3eaec'}"><div><span><b>${P.length}</b><small>หน้างาน</small></span></div></div>
+   <div class="lg">${ST.map(([v,l,c])=>`<div><i style="background:${c}"></i>${l}<b>${cnt(v)}</b></div>`).join('')}</div></div>
+   <div class="stp"><div style="font-size:13px;font-weight:600">หน้างานที่กำลังสร้าง แยกตามงวด</div>${step.map(s=>`<div class="r"><span>งวด ${s.i}</span><div class="bar"><i style="width:${b.length?s.n/b.length*100:0}%"></i></div><b>${s.n}</b></div>`).join('')}</div></div>
+  <div class="pn span"><h3><i class="fa-solid fa-helmet-safety" style="color:var(--acc)"></i>หน้างานที่กำลังสร้าง<a onclick="sf='กำลังก่อสร้าง';go('sites')">ดูทั้งหมด</a></h3>
+   ${b.length?`<div class="grid">${b.slice(0,6).map(siteHTML).join('')}</div>`:'<div class="emp"><i class="fa-solid fa-house-chimney"></i>ยังไม่มีหน้างานที่กำลังก่อสร้าง</div>'}</div>
+ </div>`}
+
+function siteHTML(p){
+ const al=advLabel(p),tel=p.call?`<a class="btn gh sm" href="tel:${esc(p.call)}" aria-label="โทร"><i class="fa-solid fa-phone"></i></a>`:'';
+ return`<div class="cd"><div onclick="showS('${esc(p.id)}')" style="cursor:pointer"><div class="h"><div style="flex:1;min-width:0">${badge(p)}<h4>${esc(p.name)}</h4><div class="ad"><i class="fa-solid fa-location-dot"></i> ${esc(p.address)}</div></div><div class="pv">${p.price?mil(Number(p.price)):''}</div></div>${ladder(p)}</div>
+ <div class="acts"><a class="btn pri sm" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}"><i class="fa-solid fa-diamond-turn-right"></i> นำทาง</a>${tel}${al?`<button class="btn gh sm" onclick="adv('${esc(p.id)}')">${al}</button>`:''}</div></div>`}
+
+function rSites(){
+ $('chs').innerHTML=[['ALL','ทั้งหมด']].concat(ST.map(s=>[s[0],s[1]])).map(([v,l])=>{const n=v==='ALL'?P.length:P.filter(p=>p.status===v).length;return`<button class="chip ${sf===v?'on':''}" onclick="sf='${v}';rSites()">${l}<em>${n}</em></button>`}).join('');
+ const d=P.filter(p=>(sf==='ALL'||p.status===sf)&&[p.name,p.address,p.call,p.details].some(v=>String(v??'').toLowerCase().includes(q)));
+ $('sites').innerHTML=d.length?d.map(siteHTML).join(''):'<div class="emp" style="grid-column:1/-1"><i class="fa-solid fa-folder-open"></i>ไม่พบหน้างาน ลองเปลี่ยนคำค้นหาหรือตัวกรอง</div>'}
+
+function rTasks(){
+ const F=[['open','ค้างอยู่'],['due','ถึงกำหนด'],['all','ทั้งหมด'],['done','เสร็จแล้ว']];
+ const f={open:t=>!t.done,due:t=>!t.done&&t.due&&t.due<=today(),all:()=>true,done:t=>t.done};
+ $('tchs').innerHTML=F.map(([v,l])=>`<button class="chip ${tf===v?'on':''}" onclick="tf='${v}';rTasks()">${l}<em>${T.filter(f[v]).length}</em></button>`).join('');
+ const d=sortT(T.filter(f[tf]));
+ $('tlist').innerHTML=d.length?d.map(taskHTML).join(''):'<div class="emp"><i class="fa-regular fa-clipboard"></i>ไม่มีรายการในหมวดนี้<br>กดปุ่ม + เพื่อเพิ่มงาน</div>'}
+
+/* ---- site detail ---- */
+function showS(id){
+ const p=fp(id);if(!p)return;const al=advLabel(p),mine=T.filter(t=>!t.done&&String(t.pid)===String(p.id)).length;
+ $('sBody').innerHTML=`${p.image?`<img src="${esc(p.image)}" alt="" style="width:100%;height:170px;object-fit:cover;border-radius:16px;margin-bottom:12px" onerror="this.remove()">`:''}
+ ${badge(p)}<div style="font-size:20px;font-weight:600;margin:8px 0 0;line-height:1.25">${esc(p.name)}</div>${ladder(p)}
+ <div class="dl"><div><i class="fa-solid fa-location-dot"></i><span>${esc(p.address)}</span></div><div><i class="fa-solid fa-tag"></i><span>${money(p.price)}</span></div>
+ <div><i class="fa-solid fa-phone"></i><span>${p.call?`<a href="tel:${esc(p.call)}" style="color:var(--acc);font-weight:600">${esc(p.call)}</a>`:'-'}</span></div>
+ <div><i class="fa-solid fa-circle-info"></i><span>${esc(p.details)}</span></div>
+ <div><i class="fa-solid fa-list-check"></i><span>งานค้างของหน้างานนี้ ${mine} รายการ</span></div></div>
+ <a class="btn pri" style="width:100%" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}"><i class="fa-solid fa-diamond-turn-right"></i> นำทางด้วย Google Maps</a>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><button class="btn gh" onclick="cl('sOv');openT(null,'${esc(p.id)}')"><i class="fa-solid fa-plus"></i> เพิ่มงาน</button>${al?`<button class="btn gh" onclick="adv('${esc(p.id)}')">${al}</button>`:'<span></span>'}</div>`;
+ op('sOv')}
+
+/* ---- tasks ---- */
+function tog(id){const t=T.find(x=>x.id===id);if(!t)return;t.done=!t.done;sv();rAll();if(t.done)toast('ทำเสร็จแล้ว')}
+function setP(v){[...$('fP').children].forEach(b=>b.classList.toggle('on',b.dataset.v===String(v)))}
+document.addEventListener('click',e=>{const b=e.target.closest('.seg button');if(b)setP(b.dataset.v)});
+function openT(id,pid){
+ const t=id?T.find(x=>x.id===id):null;eid=t?t.id:null;
+ $('tH').textContent=t?'แก้ไขงาน':'เพิ่มงานใหม่';
+ $('fT').value=t?t.title:'';$('fD').value=t?t.due||'':'';$('fN').value=t?t.note||'':'';setP(t?t.pr||1:1);
+ $('fJ').innerHTML='<option value="">ไม่ระบุ</option>'+P.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+ $('fJ').value=t?t.pid||'':pid||'';$('tDel').style.display=t?'inline-flex':'none';op('tOv');setTimeout(()=>$('fT').focus(),50)}
+function saveT(){
+ const title=$('fT').value.trim();if(!title){$('fT').focus();return toast('กรุณากรอกชื่องาน',1)}
+ const o={title,due:$('fD').value,pr:Number(document.querySelector('#fP .on')?.dataset.v||1),pid:$('fJ').value,note:$('fN').value.trim()};
+ if(eid)Object.assign(T.find(x=>x.id===eid),o);else T.push({id:'T'+Date.now(),done:false,...o});
+ sv();cl('tOv');rAll();toast('บันทึกแล้ว')}
+function delT(){if(!eid||!confirm('ลบงานนี้ใช่หรือไม่?'))return;T=T.filter(x=>x.id!==eid);sv();cl('tOv');rAll();toast('ลบแล้ว')}
+
+go('dash');load();
+</script>
+</body>
+</html>
