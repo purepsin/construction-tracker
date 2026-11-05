@@ -78,6 +78,41 @@ main{padding:14px 14px calc(96px + var(--sb));width:100%;max-width:1180px;margin
 .tm{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--mut);margin-top:3px}
 .tm .od{color:var(--red);font-weight:600}.tm .td{color:var(--amb);font-weight:600}
 .emp{text-align:center;color:var(--mut);padding:26px 10px;font-size:14px}.emp i{display:block;font-size:30px;color:#b9c7cb;margin-bottom:8px}
+/* dashboard task calendar */
+.cal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
+.cal-month{font-size:17px;font-weight:600;white-space:nowrap}
+.cal-nav{display:flex;align-items:center;gap:5px}
+.cal-nav button{min-width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:#f7faf9;display:grid;place-items:center;color:var(--ink)}
+.cal-nav .cal-today{width:auto;padding:0 10px;font-size:12px;font-weight:600;color:var(--acc)}
+.cal-weekdays,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal-weekdays{margin-bottom:5px}
+.cal-weekdays span{text-align:center;font-size:12px;font-weight:500;color:var(--mut);padding:4px 0}
+.cal-day,.cal-blank{min-width:0;min-height:64px;border-radius:11px}
+.cal-day{display:flex;flex-direction:column;align-items:center;gap:5px;border:1px solid var(--line);background:#fbfdfc;padding:6px 2px 3px;color:var(--ink);transition:background .15s,border-color .15s}
+.cal-day:hover{border-color:var(--acc)}
+.cal-day .cal-number{font-size:14px;font-weight:600;line-height:1.2}
+.cal-day .cal-count{font-size:10px;line-height:1;color:var(--mut);white-space:nowrap}
+.cal-day .cal-dots{display:flex;gap:3px;align-items:center;justify-content:center;min-height:6px}
+.cal-dot{width:6px;height:6px;display:inline-block;border-radius:50%;background:var(--acc)}
+.cal-dot.p2{background:var(--amb)}.cal-dot.p3{background:var(--red)}
+.cal-day.today{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.cal-day.selected{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:none}
+.cal-day.selected .cal-count{color:#ffffffc9}
+.cal-day.overdue:not(.selected) .cal-number{color:var(--red)}
+.cal-blank{background:transparent}
+.cal-legend{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin:12px 2px 0;font-size:11.5px;color:var(--mut)}
+.cal-legend span{display:inline-flex;align-items:center;gap:5px}
+.cal-agenda{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.cal-agenda-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.cal-agenda-head strong{font-size:14px;display:block;font-weight:600}
+.cal-agenda-head small{font-size:12px;color:var(--mut)}
+.cal-agenda-head .btn{white-space:nowrap;padding:0 10px;min-height:36px;font-size:12px}
+.cal-empty{padding:16px 6px;text-align:center;font-size:13px;color:var(--mut)}
+.cal-undated{border-top:1px solid var(--line);padding:10px 0 0;margin-top:5px;font-size:12px}
+.cal-undated button{font-size:12px;color:var(--acc);font-weight:500;text-align:left}
+@media(min-width:500px){.cal-day,.cal-blank{min-height:72px}.cal-day .cal-count::after{content:' งาน'}}
+@media(max-width:380px){.cal-weekdays,.cal-grid{gap:3px}.cal-day,.cal-blank{min-height:58px}.cal-nav{gap:3px}.cal-month{font-size:15px}}
+
 /* sites */
 .tools{display:grid;gap:10px;margin-bottom:12px}
 .sr{position:relative}.sr i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut)}
@@ -240,11 +275,57 @@ function taskHTML(t){
  <div class="tb" onclick="openT('${t.id}')"><div class="tt">${esc(t.title)}</div><div class="tm">${t.due?`<span class="${dc}"><i class="fa-regular fa-calendar"></i> ${late(t)?'เกินกำหนด ':t.due===today()?'วันนี้ ':''}${fd(t.due)}</span>`:''}${pj?`<span><i class="fa-solid fa-location-dot"></i> ${esc(pj.name)}</span>`:''}${t.pr==3?'<span style="color:var(--red)">ด่วน</span>':''}</div></div></div>`}
 function sortT(a){return a.slice().sort((x,y)=>(x.due||'9')>(y.due||'9')?1:-1||0)}
 
+/* ---- dashboard calendar (tasks stay in this browser's existing storage) ---- */
+let calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),calDay=today();
+const calMonthText=new Intl.DateTimeFormat('th-TH',{month:'long',year:'numeric'});
+const calDayText=new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'long',year:'numeric'});
+function calShift(n){
+ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+n,1);
+ const first=iso(calMonth),now=today();
+ calDay=now.slice(0,7)===first.slice(0,7)?now:first;
+ rDash();
+}
+function calJumpToday(){const d=new Date();calMonth=new Date(d.getFullYear(),d.getMonth(),1);calDay=today();rDash()}
+function calSelect(day){calDay=day;rDash()}
+function openCalTask(){openT();$('fD').value=calDay}
+function calendarHTML(){
+ const y=calMonth.getFullYear(),m=calMonth.getMonth(),leading=new Date(y,m,1).getDay();
+ const last=new Date(y,m+1,0).getDate(),cells=Math.ceil((leading+last)/7)*7;
+ const monthPrefix=iso(new Date(y,m,1)).slice(0,7);
+ const byDate=new Map();
+ T.forEach(t=>{if(t.done||typeof t.due!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(t.due)||t.due.slice(0,7)!==monthPrefix)return;
+  if(!byDate.has(t.due))byDate.set(t.due,[]);byDate.get(t.due).push(t)});
+ const days=Array.from({length:cells},(_,i)=>{
+  const n=i-leading+1;if(n<1||n>last)return'<span class="cal-blank" aria-hidden="true"></span>';
+  const date=iso(new Date(y,m,n)),items=byDate.get(date)||[],priorities=[...new Set(items.map(t=>Number(t.pr)||1))].sort((a,b)=>b-a);
+  const isToday=date===today(),isSelected=date===calDay;
+  const hasLate=items.some(t=>late(t));
+  const label=calDayText.format(new Date(y,m,n));
+  return`<button type="button" class="cal-day${isToday?' today':''}${isSelected?' selected':''}${hasLate?' overdue':''}" onclick="calSelect('${date}')" aria-label="${label} ${items.length} งาน" aria-pressed="${isSelected}">
+   <span class="cal-number">${n}</span><span class="cal-dots">${priorities.map(p=>`<i class="cal-dot p${p}"></i>`).join('')}</span>${items.length?`<span class="cal-count">${items.length}</span>`:''}</button>`;
+ }).join('');
+ const selected=sortT(T.filter(t=>!t.done&&t.due===calDay));
+ const unassigned=T.filter(t=>!t.done&&!t.due).length;
+ const label=calDayText.format(new Date(calDay+'T00:00:00'));
+ return`<div class="cal-toolbar"><span class="cal-month">${calMonthText.format(calMonth)}</span>
+   <div class="cal-nav"><button type="button" class="cal-today" onclick="calJumpToday()">วันนี้</button>
+    <button type="button" onclick="calShift(-1)" aria-label="เดือนก่อนหน้า"><i class="fa-solid fa-chevron-left"></i></button>
+    <button type="button" onclick="calShift(1)" aria-label="เดือนถัดไป"><i class="fa-solid fa-chevron-right"></i></button></div></div>
+  <div class="cal-weekdays">${['อา','จ','อ','พ','พฤ','ศ','ส'].map(v=>`<span>${v}</span>`).join('')}</div>
+  <div class="cal-grid">${days}</div>
+  <div class="cal-legend"><span><i class="cal-dot"></i>ปกติ</span><span><i class="cal-dot p2"></i>สำคัญ</span><span><i class="cal-dot p3"></i>ด่วน</span></div>
+  <div class="cal-agenda"><div class="cal-agenda-head"><div><strong>${label}</strong><small>${selected.length} งานที่ต้องทำ</small></div>
+   <button type="button" class="btn gh sm" onclick="openCalTask()"><i class="fa-solid fa-plus"></i> เพิ่มงาน</button></div>
+   ${selected.length?selected.map(taskHTML).join(''):'<div class="cal-empty">ไม่มีงานที่กำหนดไว้ในวันนี้</div>'}</div>
+  ${unassigned?`<div class="cal-undated"><button type="button" onclick="tf='open';go('tasks')"><i class="fa-regular fa-calendar-xmark"></i> งานที่ยังไม่กำหนดวัน ${unassigned} รายการ — ดูในรายการงาน</button></div>`:''}`;
+}
+
+
 function rDash(){
- if(!loaded&&!P.length)return;
+ /* Show the calendar even if construction data has not loaded. */
  const h=new Date().getHours(),g=h<12?'สวัสดีตอนเช้า':h<17?'สวัสดีตอนบ่าย':'สวัสดีตอนเย็น';
  const cnt=s=>P.filter(p=>p.status===s).length,b=P.filter(p=>isB(p.status));
- const val=P.reduce((a,p)=>a+(Number(p.price)||0),0),dn=dueNow(),o=sortT(openT_()).slice(0,6);
+ const val=P.reduce((a,p)=>a+(Number(p.price)||0),0),dn=dueNow();
  let a=0;const seg=ST.map(([v,,c])=>{const n=cnt(v),s=a;a+=P.length?n/P.length*100:0;return`${c} ${s}% ${a}%`}).join(',');
  const step=[1,2,3,4].map(i=>({i,n:b.filter(p=>(parseInt(p.step)||0)===i).length}));
  $('p-dash').innerHTML=`
@@ -256,8 +337,8 @@ function rDash(){
   <div class="kpi"><i class="fa-solid fa-coins" style="background:#e3f5ea;color:var(--grn)"></i><div class="v">${mil(val)}</div><div class="l">มูลค่างานรวม (บาท)</div></div>
  </div>
  <div class="cols">
-  <div class="pn"><h3><i class="fa-solid fa-list-check" style="color:var(--acc)"></i>งานที่ต้องทำ<a onclick="tf='open';go('tasks')">ดูทั้งหมด</a></h3>
-   ${o.length?o.map(taskHTML).join(''):'<div class="emp"><i class="fa-regular fa-circle-check"></i>ไม่มีงานค้าง กด + เพื่อเพิ่มงานใหม่</div>'}</div>
+  <div class="pn"><h3><i class="fa-regular fa-calendar-days" style="color:var(--acc)"></i>ปฏิทินงานที่ต้องทำ<a onclick="tf='open';go('tasks')">ดูทั้งหมด</a></h3>
+   ${calendarHTML()}</div>
   <div class="pn"><h3><i class="fa-solid fa-chart-pie" style="color:var(--acc)"></i>สถานะหน้างาน</h3>
    <div class="dn"><div class="ring" style="background:${P.length?`conic-gradient(${seg})`:'#e3eaec'}"><div><span><b>${P.length}</b><small>หน้างาน</small></span></div></div>
    <div class="lg">${ST.map(([v,l,c])=>`<div><i style="background:${c}"></i>${l}<b>${cnt(v)}</b></div>`).join('')}</div></div>
