@@ -185,6 +185,7 @@ main{padding:14px 14px calc(96px + var(--sb));width:100%;max-width:1180px;margin
     </header>
     <main>
       <div id="er" class="er"><i class="fa-solid fa-triangle-exclamation"></i><span>โหลดข้อมูลหน้างานไม่ได้ ตรวจสอบอินเทอร์เน็ต</span><button onclick="load()">ลองอีกครั้ง</button></div>
+      <div id="taskEr" class="er"><i class="fa-solid fa-triangle-exclamation"></i><span>เชื่อมต่อ Tasks ไม่สำเร็จ</span><button onclick="load()">ลองใหม่</button></div>
       <section id="p-dash" class="pg"></section>
       <section id="p-sites" class="pg">
         <div class="tools"><div class="sr"><i class="fa-solid fa-magnifying-glass"></i><input id="q" type="search" placeholder="ค้นหาชื่อ ที่อยู่ เบอร์โทร" oninput="q=this.value.toLowerCase();rSites()"></div><div id="chs" class="chips"></div></div>
@@ -215,15 +216,15 @@ main{padding:14px 14px calc(96px + var(--sb));width:100%;max-width:1180px;margin
     <label class="lbl" for="fJ">หน้างานที่เกี่ยวข้อง</label><select id="fJ" class="inp"></select>
     <label class="lbl" for="fN">บันทึกเพิ่มเติม</label><textarea id="fN" class="inp" rows="3" style="resize:none"></textarea>
   </div>
-  <div class="sf"><button class="btn dng" id="tDel" onclick="delT()">ลบ</button><button class="btn pri" onclick="saveT()">บันทึกงาน</button></div>
+  <div class="sf"><button class="btn dng" id="tDel" onclick="delT()">ลบ</button><button class="btn pri" id="tSaveBtn" onclick="saveT()">บันทึกงาน</button></div>
 </div></div>
 <div id="toast" class="toast" role="status"></div>
 
 <script>
-const NAME='เพียว',API="https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec",SK='tasks_'+'PURE';
+const NAME='เพียว',API="https://script.google.com/macros/s/AKfycby6BVv16v4jQVZc5VIOIbvuz6yWkef4Wzc-Oe5VQuFQC0agZgTGGbjxNMLSKPcSrDO74Q/exec",SK='tasks_'+'PURE',MIGRATION_KEY=SK+'_cloud_v1';
 const ST=[['เซ็นสัญญาแล้ว','เซ็นสัญญา','#2b8be0'],['กำลังก่อสร้าง','กำลังสร้าง','#e8890c'],['สร้างเสร็จแล้ว','เสร็จแล้ว','#1f9d57']];
 const TTL={dash:'แดชบอร์ด',sites:'หน้างานของฉัน',tasks:'งานที่ต้องทำ'};
-let P=[],T=ld(),tab='dash',sf='ALL',tf='open',q='',eid=null,loaded=false;
+let P=[],T=ld(),tab='dash',sf='ALL',tf='open',q='',eid=null,loaded=false,tasksReady=false,taskBusy=false;
 const $=i=>document.getElementById(i);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function ld(){try{return JSON.parse(localStorage.getItem(SK))||[]}catch(e){return[]}}
@@ -245,14 +246,61 @@ function go(t){tab=t;document.querySelectorAll('.pg').forEach(e=>e.classList.tog
  $('ttl').innerHTML=TTL[t]+'<small>คุณ'+NAME+'</small>';scrollTo(0,0);rAll()}
 document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>go(b.dataset.t));
 
-/* ---- data ---- */
+/* ---- data from Google Sheets ---- */
+async function getCloudTasks(){
+ const u=API+'?action=listTasks&owner='+encodeURIComponent(NAME)+'&_='+Date.now();
+ const r=await fetch(u,{cache:'no-store'});
+ if(!r.ok)throw new Error('อ่าน Tasks ไม่สำเร็จ (HTTP '+r.status+')');
+ const j=await r.json();
+ if(j.status!=='success'||!Array.isArray(j.data))throw new Error(j.message||'Apps Script ยังไม่รองรับ listTasks');
+ if(j.data.some(t=>!t||!('owner' in t)||!('title' in t)))throw new Error('Apps Script ที่เผยแพร่อยู่อาจเป็นเวอร์ชันเก่า กรุณาอัปเดต Deployment');
+ return j.data.map(t=>({...t,id:String(t.id),owner:NAME,title:String(t.title||''),due:String(t.due||''),
+  pr:Number(t.pr)||1,pid:String(t.pid||''),note:String(t.note||''),done:t.done===true||String(t.done)==='true'}));
+}
+async function syncTasks(){
+ let remote=await getCloudTasks();
+ // นำงานที่เก็บในเครื่องจากเวอร์ชันเดิมเข้าชีตครั้งเดียว โดยไม่ทับงานที่อยู่บนชีต
+ let migrated=false;
+ try{migrated=localStorage.getItem(MIGRATION_KEY)==='done'}catch(e){}
+ if(!migrated){
+  const old=ld(),existing=new Set(remote.map(t=>t.id));
+  const missing=old.filter(t=>t&&t.id&&!existing.has(String(t.id)));
+  for(const t of missing){
+   const obj={...t,id:String(t.id),pr:Number(t.pr)||1,done:t.done===true};
+   const j=await post({action:'saveTask',owner:NAME,task:obj});
+   if(j.status!=='success')throw new Error('นำเข้างานเดิมไม่สำเร็จ: '+(j.message||'ไม่ทราบสาเหตุ'));
+  }
+  if(missing.length)remote=await getCloudTasks();
+  try{localStorage.setItem(MIGRATION_KEY,'done')}catch(e){}
+ }
+ T=remote;sv();tasksReady=true;
+}
 async function load(){
- $('er').classList.remove('on');if(!loaded)$('p-dash').innerHTML='<div class="ld"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดหน้างาน...</div>';
- try{const r=await fetch(API,{cache:'no-store'});const j=await r.json();if(j.status!=='success'||!Array.isArray(j.data))throw 0;
-  P=j.data.filter(p=>p.admin===NAME);loaded=true}
- catch(e){$('er').classList.add('on')}
- rAll()}
-const post=b=>fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json());
+ $('er').classList.remove('on');$('taskEr').classList.remove('on');
+ if(!loaded)$('p-dash').innerHTML='<div class="ld"><i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดหน้างานและงานที่ต้องทำ...</div>';
+ const projectPromise=(async()=>{
+  const r=await fetch(API,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();if(j.status!=='success'||!Array.isArray(j.data))throw new Error(j.message||'อ่านหน้างานไม่ได้');
+  P=j.data.filter(p=>p.admin===NAME);loaded=true;
+ })();
+ const results=await Promise.allSettled([projectPromise,syncTasks()]);
+ if(results[0].status==='rejected'){
+  $('er').querySelector('span').textContent='โหลดหน้างานไม่ได้: '+(results[0].reason?.message||'ตรวจสอบอินเทอร์เน็ต');
+  $('er').classList.add('on');
+ }
+ if(results[1].status==='rejected'){
+  tasksReady=false;
+  $('taskEr').querySelector('span').textContent='เชื่อมต่อชีต Tasks ไม่สำเร็จ: '+(results[1].reason?.message||'ตรวจสอบ Apps Script');
+  $('taskEr').classList.add('on');
+ }
+ rAll();
+}
+// POST แบบ text/plain เพื่อหลีกเลี่ยง CORS preflight บนเว็บไซต์ภายนอก
+const post=async b=>{
+ const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(b)});
+ if(!r.ok)throw new Error('HTTP '+r.status);
+ return r.json();
+};
 async function adv(id){
  const p=fp(id);if(!p)return;let s=p.status,n=parseInt(p.step)||0,m;
  if(s==='เซ็นสัญญาแล้ว'){s='กำลังก่อสร้าง';n=1;m='เริ่มก่อสร้าง งวด 1'}
@@ -275,7 +323,7 @@ function taskHTML(t){
  <div class="tb" onclick="openT('${t.id}')"><div class="tt">${esc(t.title)}</div><div class="tm">${t.due?`<span class="${dc}"><i class="fa-regular fa-calendar"></i> ${late(t)?'เกินกำหนด ':t.due===today()?'วันนี้ ':''}${fd(t.due)}</span>`:''}${pj?`<span><i class="fa-solid fa-location-dot"></i> ${esc(pj.name)}</span>`:''}${t.pr==3?'<span style="color:var(--red)">ด่วน</span>':''}</div></div></div>`}
 function sortT(a){return a.slice().sort((x,y)=>(x.due||'9')>(y.due||'9')?1:-1||0)}
 
-/* ---- dashboard calendar (tasks stay in this browser's existing storage) ---- */
+/* ---- dashboard calendar (tasks are synchronized with Google Sheets) ---- */
 let calMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1),calDay=today();
 const calMonthText=new Intl.DateTimeFormat('th-TH',{month:'long',year:'numeric'});
 const calDayText=new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'long',year:'numeric'});
@@ -287,7 +335,7 @@ function calShift(n){
 }
 function calJumpToday(){const d=new Date();calMonth=new Date(d.getFullYear(),d.getMonth(),1);calDay=today();rDash()}
 function calSelect(day){calDay=day;rDash()}
-function openCalTask(){openT();$('fD').value=calDay}
+function openCalTask(){if(!tasksReady)return toast('ยังเชื่อมต่อ Tasks ไม่ได้',true);openT();$('fD').value=calDay}
 function calendarHTML(){
  const y=calMonth.getFullYear(),m=calMonth.getMonth(),leading=new Date(y,m,1).getDay();
  const last=new Date(y,m+1,0).getDate(),cells=Math.ceil((leading+last)/7)*7;
@@ -377,22 +425,65 @@ function showS(id){
  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><button class="btn gh" onclick="cl('sOv');openT(null,'${esc(p.id)}')"><i class="fa-solid fa-plus"></i> เพิ่มงาน</button>${al?`<button class="btn gh" onclick="adv('${esc(p.id)}')">${al}</button>`:'<span></span>'}</div>`;
  op('sOv')}
 
-/* ---- tasks ---- */
-function tog(id){const t=T.find(x=>x.id===id);if(!t)return;t.done=!t.done;sv();rAll();if(t.done)toast('ทำเสร็จแล้ว')}
+/* ---- tasks: save to Tasks sheet (localStorage is backup only) ---- */
+function requireTasksReady(){
+ if(!tasksReady){toast('ยังเชื่อมต่อชีต Tasks ไม่ได้ กดโหลดข้อมูลใหม่',true);return false}
+ if(taskBusy){toast('กำลังบันทึกงาน กรุณารอจนบันทึกเสร็จ');return false}
+ return true;
+}
+function taskBusyUI(value){
+ taskBusy=value;
+ $('tSaveBtn').disabled=value;$('tDel').disabled=value;
+ $('tSaveBtn').innerHTML=value?'<i class="fa-solid fa-spinner fa-spin"></i> กำลังบันทึก...':'บันทึกงาน';
+}
+async function tog(id){
+ if(!requireTasksReady())return;
+ const t=T.find(x=>x.id===id);if(!t)return;
+ const updated={...t,done:!t.done};
+ taskBusy=true;
+ try{
+  const j=await post({action:'saveTask',owner:NAME,task:updated});
+  if(j.status!=='success')throw new Error(j.message||'บันทึกไม่สำเร็จ');
+  Object.assign(t,updated);sv();rAll();toast(t.done?'ทำเสร็จแล้ว':'เปลี่ยนเป็นงานค้างแล้ว');
+ }catch(e){toast('บันทึกสถานะไม่สำเร็จ: '+(e.message||'เชื่อมต่อไม่ได้'),true)}
+ finally{taskBusy=false}
+}
 function setP(v){[...$('fP').children].forEach(b=>b.classList.toggle('on',b.dataset.v===String(v)))}
 document.addEventListener('click',e=>{const b=e.target.closest('.seg button');if(b)setP(b.dataset.v)});
 function openT(id,pid){
+ if(!tasksReady){toast('ยังเชื่อมต่อชีต Tasks ไม่ได้ กรุณากดโหลดข้อมูลใหม่',true);return}
  const t=id?T.find(x=>x.id===id):null;eid=t?t.id:null;
  $('tH').textContent=t?'แก้ไขงาน':'เพิ่มงานใหม่';
  $('fT').value=t?t.title:'';$('fD').value=t?t.due||'':'';$('fN').value=t?t.note||'':'';setP(t?t.pr||1:1);
  $('fJ').innerHTML='<option value="">ไม่ระบุ</option>'+P.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
- $('fJ').value=t?t.pid||'':pid||'';$('tDel').style.display=t?'inline-flex':'none';op('tOv');setTimeout(()=>$('fT').focus(),50)}
-function saveT(){
- const title=$('fT').value.trim();if(!title){$('fT').focus();return toast('กรุณากรอกชื่องาน',1)}
+ $('fJ').value=t?t.pid||'':pid||'';$('tDel').style.display=t?'inline-flex':'none';op('tOv');setTimeout(()=>$('fT').focus(),50)
+}
+async function saveT(){
+ if(!requireTasksReady())return;
+ const title=$('fT').value.trim();if(!title){$('fT').focus();return toast('กรุณากรอกชื่องาน',true)}
  const o={title,due:$('fD').value,pr:Number(document.querySelector('#fP .on')?.dataset.v||1),pid:$('fJ').value,note:$('fN').value.trim()};
- if(eid)Object.assign(T.find(x=>x.id===eid),o);else T.push({id:'T'+Date.now(),done:false,...o});
- sv();cl('tOv');rAll();toast('บันทึกแล้ว')}
-function delT(){if(!eid||!confirm('ลบงานนี้ใช่หรือไม่?'))return;T=T.filter(x=>x.id!==eid);sv();cl('tOv');rAll();toast('ลบแล้ว')}
+ const original=eid?T.find(x=>x.id===eid):null;
+ const task=original?{...original,...o}:{id:'T'+Date.now()+'_'+Math.random().toString(36).slice(2,8),done:false,...o};
+ taskBusyUI(true);
+ try{
+  const j=await post({action:'saveTask',owner:NAME,task});
+  if(j.status!=='success')throw new Error(j.message||'บันทึกไม่สำเร็จ');
+  if(original)Object.assign(original,task);else T.push(task);
+  sv();cl('tOv');rAll();toast('บันทึกลง Google Sheets แล้ว');
+ }catch(e){toast('บันทึกลงชีต Tasks ไม่สำเร็จ: '+(e.message||'เชื่อมต่อไม่ได้'),true)}
+ finally{taskBusyUI(false)}
+}
+async function delT(){
+ if(!requireTasksReady())return;
+ if(!eid||!confirm('ลบงานนี้ออกจาก Google Sheets ใช่หรือไม่?'))return;
+ const id=eid;taskBusyUI(true);
+ try{
+  const j=await post({action:'deleteTask',owner:NAME,id});
+  if(j.status!=='success')throw new Error(j.message||'ลบไม่สำเร็จ');
+  T=T.filter(x=>x.id!==id);sv();cl('tOv');rAll();toast('ลบจาก Google Sheets แล้ว');
+ }catch(e){toast('ลบงานไม่สำเร็จ: '+(e.message||'เชื่อมต่อไม่ได้'),true)}
+ finally{taskBusyUI(false)}
+}
 
 go('dash');load();
 </script>
