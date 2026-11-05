@@ -169,7 +169,27 @@ textarea.inp{resize:none}
 <header class="bar">
   <div class="logo"><img src="https://i.ibb.co/jvVJd7xY/762219.webp" alt="โลโก้"></div>
   <div class="ttl"><b>Construction Map Tracker</b><small>พิกัดหน้างาน</small></div>
+
+  <select class="btn ghost" style="
+  flex: 0 0 auto;
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+" aria-label="จัดการงาน" onchange="if(this.value) window.location.href=this.value;">
+  <option value="" disabled selected hidden style="color: #333;">จัดการงาน</option>
+  <option value="PURE" style="color: #333; background: #fff;">เพียว</option>
+  <option value="ARM" style="color: #333; background: #fff;">อาร์ม</option>
+</select>
   <button class="ib" onclick="fetchProjects()" aria-label="โหลดข้อมูลใหม่"><i class="fa-solid fa-rotate"></i></button>
+
+
+  
   <button class="btn pri desk" onclick="openForm()"><i class="fa-solid fa-plus"></i> เพิ่มหน้างาน</button>
 </header>
 
