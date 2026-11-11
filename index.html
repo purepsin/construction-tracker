@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>คุณเพียว | รับสร้างบ้านภาคอีสาน</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#16181b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -12,91 +12,78 @@
   --bg:#16181b; --panel:#22252a; --ink:#f4f1e8; --mute:#a9a79d;
   --yellow:#ffc400; --black:#0e0f11; --line:#06c755; --line2:#00a33f;
   box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
 }
-html, body{
-  height:100%;
-  overflow:hidden;
-  margin:0;
-  padding:0;
-  position:fixed;
-  width:100%;
-}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;height:100dvh;overflow:hidden;overscroll-behavior:none}
+*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{
+  margin:0;height:100%;overflow:hidden;overscroll-behavior:none;
   background:var(--bg);color:var(--ink);
   font-family:"Prompt","Noto Sans Thai",system-ui,sans-serif;
   background-image:
     linear-gradient(rgba(255,196,0,.05) 1px,transparent 1px),
     linear-gradient(90deg,rgba(255,196,0,.05) 1px,transparent 1px);
   background-size:28px 28px;
-  display:flex;justify-content:center;align-items:center;
+  display:flex;justify-content:center;
 }
 .wrap{
-  width:100%;
-  max-width:440px;
-  height:100%;
-  max-height:100vh;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  padding:8px 16px;
-  box-sizing:border-box;
-  overflow:hidden;
+  width:100%;max-width:440px;height:100%;padding:0 18px clamp(8px,2vh,18px);
+  display:flex;flex-direction:column;
 }
 .hazard{
-  height:8px;margin:0 -16px;
+  flex:none;height:clamp(8px,1.8vh,16px);margin:0 -18px;
   background:repeating-linear-gradient(-45deg,var(--yellow) 0 14px,var(--black) 14px 28px);
-  background-size:40px 8px;animation:slide 1.6s linear infinite;
+  background-size:40px 16px;animation:slide 1.6s linear infinite;
 }
 @keyframes slide{to{background-position:40px 0}}
 
-.hero{text-align:center;padding:2px 0 0}
+.hero{flex:none;text-align:center;padding:clamp(8px,2.2vh,26px) 0 0}
 .badge{
-  width:72px;height:72px;margin:0 auto 6px;position:relative;
-  background:var(--yellow);color:var(--black);
+  display:block;width:clamp(60px,12vh,112px);height:clamp(60px,12vh,112px);
+  margin:0 auto clamp(6px,1.4vh,14px);object-fit:cover;
   clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
-  display:grid;place-items:center;animation:pop .7s cubic-bezier(.2,1.4,.4,1) both;
+  background:var(--yellow);animation:pop .7s cubic-bezier(.2,1.4,.4,1) both;
 }
-.badge img{width:100%;height:100%;object-fit:cover;}
 @keyframes pop{from{transform:scale(.4) rotate(-20deg);opacity:0}}
 .tag{
   display:inline-block;background:var(--black);color:var(--yellow);
-  font-weight:700;font-size:11px;letter-spacing:.12em;padding:2px 8px;
-  border:2px solid var(--yellow);margin-bottom:4px;
+  font-weight:700;font-size:clamp(10px,1.6vh,12px);letter-spacing:.06em;padding:3px 10px;
+  border:2px solid var(--yellow);margin:0;
 }
-h1{margin:0;font-size:28px;font-weight:800;line-height:1.1}
+h1{margin:clamp(2px,.6vh,6px) 0 clamp(4px,1vh,10px);font-size:clamp(26px,5vh,38px);font-weight:800;line-height:1.1}
 h1 span{color:var(--yellow)}
-.sub{margin:2px auto 0;color:var(--mute);font-size:12px;max-width:300px;line-height:1.4}
-.stats{display:flex;gap:6px;margin:8px 0 10px}
+.stats{display:flex;gap:8px;margin:clamp(8px,1.8vh,20px) 0 clamp(8px,1.8vh,20px)}
 .stats div{
   flex:1;background:var(--panel);border-top:3px solid var(--yellow);
-  padding:5px 2px;text-align:center;font-size:11px;color:var(--mute);
+  padding:clamp(4px,1vh,10px) 4px;text-align:center;font-size:clamp(10px,1.5vh,12px);color:var(--mute);line-height:1.3;
 }
-.stats b{display:block;color:var(--ink);font-size:12px;font-weight:700}
+.stats b{display:block;color:var(--ink);font-size:clamp(12px,1.9vh,15px);font-weight:700}
 
-.btns{display:flex;flex-direction:column;gap:6px}
+.btns{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:clamp(8px,1.6vh,14px);padding-right:5px}
 .btn{
-  position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;
-  min-height:48px;padding:6px 12px;text-decoration:none;color:var(--ink);
-  background:var(--panel);border:2px solid #3a3e45;border-left:6px solid var(--yellow);
-  box-shadow:3px 3px 0 var(--black);
+  position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;
+  flex:1 1 0;min-height:0;max-height:84px;padding:6px 16px;text-decoration:none;color:var(--ink);
+  background:var(--panel);border:2px solid #3a3e45;border-left:8px solid var(--yellow);
+  box-shadow:5px 5px 0 var(--black);
   transition:transform .12s ease,box-shadow .12s ease,background .2s;
-  opacity:0;transform:translateY(12px);animation:rise .5s ease forwards;
+  opacity:0;transform:translateY(18px);animation:rise .5s ease forwards;
 }
 .btn:nth-child(1){animation-delay:.15s}.btn:nth-child(2){animation-delay:.25s}
 .btn:nth-child(3){animation-delay:.35s}.btn:nth-child(4){animation-delay:.45s}
 .btn:nth-child(5){animation-delay:.55s}
 @keyframes rise{to{opacity:1;transform:none}}
-.btn:active{transform:translate(3px,3px) scale(.98);box-shadow:0 0 0 var(--black);background:#2c3036}
+.btn:active{transform:translate(5px,5px) scale(.98);box-shadow:0 0 0 var(--black);background:#2c3036}
 .ico{
-  flex:none;width:32px;height:32px;display:grid;place-items:center;
+  flex:none;width:clamp(34px,5.6vh,44px);height:clamp(34px,5.6vh,44px);display:grid;place-items:center;
   background:var(--yellow);color:var(--black);
 }
-.ico svg{width:18px;height:18px}
+.ico svg{width:60%;height:60%}
 .txt{flex:1;min-width:0}
-.txt b{display:block;font-size:14px;font-weight:700}
-.txt small{color:var(--mute);font-size:11px}
-.arrow{font-size:16px;color:var(--yellow);transition:transform .2s}
-.btn:active .arrow{transform:translateX(4px)}
+.txt b{display:block;font-size:clamp(14px,2.2vh,17px);font-weight:700;line-height:1.25}
+.txt small{color:var(--mute);font-size:clamp(11px,1.6vh,13px)}
+.arrow{font-size:22px;color:var(--yellow);transition:transform .2s}
+.btn:active .arrow{transform:translateX(5px)}
 .rip{
   position:absolute;border-radius:50%;background:rgba(255,196,0,.45);
   transform:scale(0);animation:rip .55s ease-out forwards;pointer-events:none;
@@ -105,13 +92,14 @@ h1 span{color:var(--yellow)}
 
 /* LINE: the hero button */
 .btn.line{
+  flex-grow:1.3;max-height:100px;
   background:linear-gradient(135deg,var(--line),var(--line2));
-  border:2px solid #0b8a3c;border-left:6px solid var(--black);
-  color:#fff;min-height:54px;box-shadow:3px 3px 0 var(--black),0 0 0 0 rgba(6,199,85,.6);
+  border:2px solid #0b8a3c;border-left:8px solid var(--black);
+  color:#fff;box-shadow:5px 5px 0 var(--black),0 0 0 0 rgba(6,199,85,.6);
   animation:rise .5s .05s ease forwards,pulse 2s 1s infinite;
 }
 .btn.line .ico{background:#fff;color:var(--line2);animation:wiggle 2.4s 1.2s infinite}
-.btn.line .txt b{font-size:15px}
+.btn.line .txt b{font-size:clamp(16px,2.7vh,20px)}
 .btn.line .txt small{color:#e5ffe9}
 .btn.line .arrow{color:#fff}
 .btn.line::after{
@@ -120,17 +108,20 @@ h1 span{color:var(--yellow)}
   transform:skewX(-20deg);animation:shine 2.8s 1.2s infinite;
 }
 .chip{
-  position:absolute;top:-1px;right:10px;background:var(--yellow);color:var(--black);
-  font-size:10px;font-weight:800;padding:2px 6px;letter-spacing:.06em;
+  position:absolute;top:-1px;right:12px;background:var(--yellow);color:var(--black);
+  font-size:11px;font-weight:800;padding:2px 8px 3px;letter-spacing:.06em;
   animation:blink 1.2s infinite;
 }
-@keyframes pulse{70%{box-shadow:3px 3px 0 var(--black),0 0 0 10px rgba(6,199,85,0)}100%{box-shadow:3px 3px 0 var(--black),0 0 0 0 rgba(6,199,85,0)}}
+@keyframes pulse{70%{box-shadow:5px 5px 0 var(--black),0 0 0 16px rgba(6,199,85,0)}100%{box-shadow:5px 5px 0 var(--black),0 0 0 0 rgba(6,199,85,0)}}
 @keyframes shine{0%{left:-60%}55%,100%{left:130%}}
 @keyframes wiggle{0%,60%,100%{transform:rotate(0)}10%{transform:rotate(-14deg) scale(1.1)}20%{transform:rotate(12deg) scale(1.1)}30%{transform:rotate(-8deg)}40%{transform:rotate(6deg)}}
 @keyframes blink{50%{background:#fff}}
 .btn.line:active{background:linear-gradient(135deg,var(--line2),#007a30)}
 
-.foot{text-align:center;color:var(--mute);font-size:11px;margin-top:2px}
+.foot{flex:none;margin-top:clamp(10px,2vh,20px)}
+.foot .hazard{height:clamp(6px,1.2vh,10px)}
+/* very short screens: drop the stats row so everything still fits */
+@media (max-height:600px){.stats{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-iteration-count:1!important}.btn{opacity:1;transform:none}}
 </style>
 </head>
@@ -139,15 +130,13 @@ h1 span{color:var(--yellow)}
   <div class="hazard"></div>
 
   <header class="hero">
-    <div>
-      <img class="badge" src="https://ik.imagekit.io/purepsin/hdhdhdh.jpg" alt="Logo">
-    </div>
+    <img class="badge" src="https://ik.imagekit.io/purepsin/hdhdhdh.jpg" alt="คุณเพียว">
     <h1>คุณ<span>เพียว</span></h1>
     <p class="tag">รับสร้างบ้านภาคอีสาน และพื้นที่ใกล้เคียง</p>
     <div class="stats">
-      <div><b>งบประหยัด</b>คุมงบ</div>
-      <div><b>ทั่วอีสาน</b>ใกล้เคียง</div>
-      <div><b>ดูหน้างาน</b>มีพิกัดเช็ก</div>
+      <div><b>งบประหยัด</b>คุมงบประมาณ</div>
+      <div><b>ทั่วอีสาน</b>และพื้นที่ใกล้เคียง</div>
+      <div><b>ดูหน้างานจริง</b>มีพิกัดให้เช็ก</div>
     </div>
   </header>
 
@@ -184,9 +173,7 @@ h1 span{color:var(--yellow)}
     </a>
   </nav>
 
-  <div class="foot">
-    <div class="hazard"></div>
-  </div>
+  <div class="foot"><div class="hazard"></div></div>
 </div>
 
 <script>
@@ -202,4 +189,3 @@ document.querySelectorAll('.btn').forEach(function(b){
 </script>
 </body>
 </html>
-
